@@ -1,11 +1,8 @@
 const {
 	Plugin,
 	Notice,
-	Modal,
 	Setting,
-	MarkdownView,
 	PluginSettingTab,
-	ItemView,
 } = require("obsidian");
 
 const GEMINI_API_BASE =
@@ -21,371 +18,13 @@ const DEFAULT_SETTINGS = {
 		"あなたは学術論文翻訳の専門家です。原文の論旨と語気を保ちつつ、自然で読みやすい日本語へ翻訳してください。用語の補足説明や注釈は追加しないでください。",
 	promptTemplate:
 		"以下の原文は学術論文からの抜粋です。構造と意味を忠実に保ちつつ{{targetLanguage}}へ翻訳してください。語調は論文調を意識し、補足説明や注釈、要約は一切追加しないでください。翻訳結果のみを出力してください。\n\n--- 原文 ---\n{{text}}\n",
-	autoPasteToEditor: false,
-	insertTemplate:
-		"> [!note] PDF翻訳 (pdf++ page {{page}})\n> 原文: {{original}}\n\n{{translation}}\n",
 	timeoutMs: 20000,
-	autoTranslateOnSelection: false,
-	displayMode: "popup",
 };
 
 const AUTO_TRANSLATE_DEBOUNCE_MS = 350;
 const AUTO_TRANSLATE_REPEAT_THRESHOLD_MS = 1500;
-const DISPLAY_MODE_MODAL = "modal";
-const DISPLAY_MODE_PANEL = "panel";
-const DISPLAY_MODE_POPUP = "popup";
-const VIEW_TYPE_TRANSLATION_PANEL = "pdf-inline-translate-panel";
-
-class GeminiTranslationModal extends Modal {
-	/**
-	 * @param {import("obsidian").App} app
-	 * @param {PdfInlineTranslatePlugin} plugin
-	 * @param {string} sourceText
-	 * @param {{ pageNumber?: number, selection?: string } | undefined} context
-	 */
-	constructor(app, plugin, sourceText, context) {
-		super(app);
-		this.plugin = plugin;
-		this.sourceText = sourceText;
-		this.context = context;
-		this.abortController = new AbortController();
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.createEl("h2", { text: "Gemini翻訳" });
-		const info = contentEl.createEl("div", { cls: "pdf-inline-translate__section" });
-		info.createEl("p", {
-			text: this.context?.pageNumber != null
-				? `PDFページ: ${this.context.pageNumber}`
-				: "ページ番号情報なし",
-		});
-		const originalDetails = contentEl.createEl("details", {
-			cls: "pdf-inline-translate__original",
-		});
-		originalDetails.createEl("summary", { text: "原文を表示" });
-		originalDetails.createEl("pre", {
-			text: this.sourceText,
-		});
-
-		this.statusEl = contentEl.createEl("p", {
-			text: "Geminiに問い合わせ中…",
-			cls: "pdf-inline-translate__status",
-		});
-
-		this.translationEl = contentEl.createEl("div", {
-			cls: "pdf-inline-translate__translation",
-		});
-
-		const buttonRow = contentEl.createEl("div", {
-			cls: "pdf-inline-translate__buttons",
-		});
-
-		this.copyButton = buttonRow.createEl("button", {
-			text: "コピー",
-			cls: "mod-cta",
-			attr: { disabled: "true" },
-		});
-		this.copyButton.addEventListener("click", () => {
-			if (!this.translationText) return;
-			if (navigator?.clipboard?.writeText) {
-				navigator.clipboard.writeText(this.translationText).then(
-					() => new Notice("翻訳結果をクリップボードにコピーしました。"),
-					(err) => {
-						console.error(err);
-						new Notice("クリップボードへのコピーに失敗しました。");
-					},
-				);
-			} else {
-				new Notice("クリップボードAPIが使用できません。手動でコピーしてください。");
-			}
-		});
-
-		this.cancelButton = buttonRow.createEl("button", {
-			text: "キャンセル",
-		});
-		this.cancelButton.addEventListener("click", () => {
-			this.abortController.abort();
-			this.close();
-		});
-
-		this.translate();
-	}
-
-	async translate() {
-		const schedule = window?.setTimeout ?? setTimeout;
-		const cancelTimer = window?.clearTimeout ?? clearTimeout;
-		let timeoutId;
-		let timedOut = false;
-		try {
-			timeoutId = schedule(() => {
-				timedOut = true;
-				try {
-					this.abortController.abort();
-				} catch (error) {
-					console.error(error);
-				}
-			}, this.plugin.settings.timeoutMs);
-
-			const translation = await this.plugin.requestTranslation(
-				this.sourceText,
-				this.context,
-				this.abortController.signal,
-			);
-
-			cancelTimer(timeoutId);
-			if (this.abortController.signal.aborted) {
-				return;
-			}
-			this.translationText = translation;
-			this.translationEl.empty();
-			this.translationEl.createEl("pre", {
-				text: translation,
-				cls: "pdf-inline-translate__translation-text",
-			});
-			this.copyButton.removeAttribute("disabled");
-			this.statusEl.setText("翻訳完了");
-
-			if (this.plugin.settings.autoPasteToEditor) {
-				const inserted = await this.plugin.insertIntoActiveEditor(
-					this.sourceText,
-					translation,
-					this.context,
-				);
-				if (inserted) {
-					new Notice("翻訳結果をアクティブなノートへ挿入しました。");
-				}
-			}
-		} catch (error) {
-			if (typeof timeoutId !== "undefined") {
-				cancelTimer(timeoutId);
-			}
-			console.error(error);
-			if (this.abortController.signal.aborted) {
-				this.statusEl.setText(
-					timedOut
-						? "タイムアウトにより翻訳を中断しました。"
-						: "翻訳リクエストを中断しました。",
-				);
-				return;
-			}
-			this.statusEl.setText("翻訳に失敗しました。詳細はコンソールをご確認ください。");
-			new Notice(
-				error?.message
-					? `Gemini翻訳エラー: ${error.message}`
-					: "Gemini翻訳に失敗しました。",
-			);
-		}
-	}
-
-	onClose() {
-		this.contentEl.empty();
-		this.abortController.abort();
-	}
-}
-
-class GeminiTranslationPanelView extends ItemView {
-	/**
-	 * @param {import("obsidian").WorkspaceLeaf} leaf
-	 * @param {PdfInlineTranslatePlugin} plugin
-	 */
-	constructor(leaf, plugin) {
-		super(leaf);
-		this.plugin = plugin;
-		this.translationText = "";
-		this.statusEl = null;
-		this.translationEl = null;
-		this.copyButton = null;
-	}
-
-	getViewType() {
-		return VIEW_TYPE_TRANSLATION_PANEL;
-	}
-
-	getDisplayText() {
-		return "PDF翻訳";
-	}
-
-	getIcon() {
-		return "languages";
-	}
-
-	onOpen() {
-		this.renderWelcome();
-	}
-
-	onClose() {
-		this.clearRefs();
-	}
-
-	renderWelcome() {
-		const container = this.containerEl;
-		container.empty();
-		container.removeClass("pdf-inline-translate__panel-view");
-		const wrapper = container.createEl("div", {
-			cls: "pdf-inline-translate__panel-empty",
-		});
-		wrapper.createEl("h2", { text: "Gemini翻訳" });
-		wrapper.createEl("p", {
-			text: "PDF++でテキストを選択すると翻訳結果がここに表示されます。",
-		});
-	}
-
-	/**
-	 * @param {string} original
-	 * @param {{ pageNumber?: number }} context
-	 */
-	showLoading(original, context) {
-		this.renderBase(original, context);
-		if (this.statusEl) {
-			this.statusEl.setText("Geminiに問い合わせ中…");
-		}
-		this.translationText = "";
-		this.toggleCopyButton(false);
-		if (this.translationEl) {
-			this.translationEl.empty();
-		}
-	}
-
-	/**
-	 * @param {string} original
-	 * @param {string} translation
-	 * @param {{ pageNumber?: number }} context
-	 */
-	showResult(original, translation, context) {
-		if (!this.statusEl) {
-			this.renderBase(original, context);
-		}
-		this.translationText = translation;
-		if (this.translationEl) {
-			this.translationEl.empty();
-			this.translationEl.createEl("pre", {
-				text: translation,
-				cls: "pdf-inline-translate__translation-text",
-			});
-		}
-		if (this.statusEl) {
-			this.statusEl.setText("翻訳完了");
-		}
-		this.toggleCopyButton(true);
-	}
-
-	/**
-	 * @param {string} original
-	 * @param {{ pageNumber?: number }} context
-	 */
-	showCancelled(original, context) {
-		if (!this.statusEl) {
-			this.renderBase(original, context);
-		}
-		if (this.statusEl) {
-			this.statusEl.setText("翻訳を中断しました。");
-		}
-		this.toggleCopyButton(false);
-	}
-
-	/**
-	 * @param {string} original
-	 * @param {{ pageNumber?: number }} context
-	 * @param {string} message
-	 */
-	showError(original, context, message) {
-		if (!this.statusEl) {
-			this.renderBase(original, context);
-		}
-		if (this.statusEl) {
-			this.statusEl.setText(message);
-		}
-		this.toggleCopyButton(false);
-	}
-
-	/**
-	 * @param {string} original
-	 * @param {{ pageNumber?: number }} context
-	 */
-	renderBase(original, context) {
-		const container = this.containerEl;
-		container.empty();
-		container.addClass("pdf-inline-translate__panel-view");
-
-		const header = container.createEl("div", {
-			cls: "pdf-inline-translate__panel-header",
-		});
-		header.createEl("h2", { text: "Gemini翻訳" });
-
-		const info = container.createEl("div", {
-			cls: "pdf-inline-translate__section",
-		});
-		info.createEl("p", {
-			text:
-				context?.pageNumber != null
-					? `PDFページ: ${context.pageNumber}`
-					: "ページ番号情報なし",
-		});
-
-		const originalDetails = container.createEl("details", {
-			cls: "pdf-inline-translate__original",
-		});
-		originalDetails.createEl("summary", { text: "原文を表示" });
-		originalDetails.createEl("pre", { text: original });
-
-		this.statusEl = container.createEl("p", {
-			cls: "pdf-inline-translate__status",
-		});
-
-		this.translationEl = container.createEl("div", {
-			cls: "pdf-inline-translate__translation",
-		});
-
-		const buttonRow = container.createEl("div", {
-			cls: "pdf-inline-translate__buttons",
-		});
-
-		this.copyButton = buttonRow.createEl("button", {
-			text: "コピー",
-			cls: "mod-cta",
-			attr: { disabled: "true" },
-		});
-		this.copyButton.addEventListener("click", () => {
-			if (!this.translationText) {
-				return;
-			}
-			if (navigator?.clipboard?.writeText) {
-				navigator.clipboard.writeText(this.translationText).then(
-					() => new Notice("翻訳結果をクリップボードにコピーしました。"),
-					(err) => {
-						console.error(err);
-						new Notice("クリップボードへのコピーに失敗しました。");
-					},
-				);
-			} else {
-				new Notice("クリップボードAPIが使用できません。手動でコピーしてください。");
-			}
-		});
-	}
-
-	toggleCopyButton(isEnabled) {
-		if (!this.copyButton) return;
-		if (isEnabled) {
-			this.copyButton.removeAttribute("disabled");
-		} else {
-			this.copyButton.setAttribute("disabled", "true");
-		}
-	}
-
-	clearRefs() {
-		this.translationText = "";
-		this.statusEl = null;
-		this.translationEl = null;
-		this.copyButton = null;
-	}
-}
 
 class GeminiTranslationFloatingPopup {
-	/**
-	 * @param {PdfInlineTranslatePlugin} plugin
-	 */
 	constructor(plugin) {
 		this.plugin = plugin;
 		this.container = null;
@@ -461,7 +100,7 @@ class GeminiTranslationFloatingPopup {
 	destroy() {
 		if (!this.container) return;
 		this.stopDragging();
-		this.container.removeEventListener("keydown", this.boundOnKeydown);
+		this.removeGlobalListener();
 		this.container.remove();
 		this.container = null;
 		this.statusEl = null;
@@ -491,10 +130,6 @@ class GeminiTranslationFloatingPopup {
 		header.className = "pdf-inline-translate__popup-header";
 		container.appendChild(header);
 
-		const title = document.createElement("h2");
-		title.textContent = "Gemini翻訳";
-		header.appendChild(title);
-
 		const headerActions = document.createElement("div");
 		headerActions.className = "pdf-inline-translate__popup-actions";
 		header.appendChild(headerActions);
@@ -511,14 +146,6 @@ class GeminiTranslationFloatingPopup {
 		const body = document.createElement("div");
 		body.className = "pdf-inline-translate__popup-body";
 		container.appendChild(body);
-
-		const info = document.createElement("div");
-		info.className = "pdf-inline-translate__section";
-		info.textContent =
-			context?.pageNumber != null
-				? `PDFページ: ${context.pageNumber}`
-				: "ページ番号情報なし";
-		body.appendChild(info);
 
 		const originalDetails = document.createElement("details");
 		originalDetails.className = "pdf-inline-translate__original";
@@ -567,6 +194,7 @@ class GeminiTranslationFloatingPopup {
 		});
 		buttonRow.appendChild(this.copyButton);
 
+		this.addGlobalListener();
 		this.focus();
 		this.setPositionFromContext(context);
 	}
@@ -581,7 +209,6 @@ class GeminiTranslationFloatingPopup {
 		container.setAttribute("aria-hidden", "true");
 		container.tabIndex = -1;
 		container.style.display = "none";
-		container.addEventListener("keydown", this.boundOnKeydown);
 		document.body.appendChild(container);
 		this.container = container;
 	}
@@ -591,6 +218,7 @@ class GeminiTranslationFloatingPopup {
 		if (typeof this.onClose === "function") {
 			this.onClose();
 		}
+		this.removeGlobalListener();
 	}
 
 	handleKeydown(event) {
@@ -722,13 +350,18 @@ class GeminiTranslationFloatingPopup {
 		}
 		return Math.min(Math.max(value, min), max);
 	}
+
+	addGlobalListener() {
+		this.removeGlobalListener();
+		document.addEventListener("keydown", this.boundOnKeydown);
+	}
+
+	removeGlobalListener() {
+		document.removeEventListener("keydown", this.boundOnKeydown);
+	}
 }
 
 class PdfInlineTranslateSettingTab extends PluginSettingTab {
-	/**
-	 * @param {import("obsidian").App} app
-	 * @param {PdfInlineTranslatePlugin} plugin
-	 */
 	constructor(app, plugin) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -832,82 +465,6 @@ class PdfInlineTranslateSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("翻訳結果を自動挿入")
-			.setDesc("有効化すると、翻訳結果をアクティブなMarkdownファイルに挿入します。")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.autoPasteToEditor)
-					.onChange(async (value) => {
-						this.plugin.settings.autoPasteToEditor = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("PDF選択時に自動翻訳")
-			.setDesc("PDF++でテキストを選択すると自動的にGemini翻訳ビューを表示します。")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.autoTranslateOnSelection)
-					.onChange(async (value) => {
-						this.plugin.settings.autoTranslateOnSelection = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("翻訳結果の表示方法")
-			.setDesc("モーダル / サイドパネル / フローティングポップアップを切り替えます。")
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOption(DISPLAY_MODE_MODAL, "モーダル (操作を一時停止)")
-					.addOption(DISPLAY_MODE_PANEL, "サイドパネル (操作を継続)")
-					.addOption(DISPLAY_MODE_POPUP, "フローティングポップアップ (操作を継続)")
-					.setValue(
-						[DISPLAY_MODE_MODAL, DISPLAY_MODE_PANEL, DISPLAY_MODE_POPUP].includes(
-							this.plugin.settings.displayMode,
-						)
-							? this.plugin.settings.displayMode
-							: DISPLAY_MODE_MODAL,
-					)
-					.onChange(async (value) => {
-						const candidates = [
-							DISPLAY_MODE_MODAL,
-							DISPLAY_MODE_PANEL,
-							DISPLAY_MODE_POPUP,
-						];
-						const nextValue = candidates.includes(value)
-							? value
-							: DISPLAY_MODE_MODAL;
-						this.plugin.settings.displayMode = nextValue;
-						await this.plugin.saveSettings();
-						if (nextValue === DISPLAY_MODE_PANEL) {
-							await this.plugin.ensureTranslationPanel();
-							this.plugin.closeFloatingPopup();
-						} else if (nextValue === DISPLAY_MODE_POPUP) {
-							this.plugin.closeTranslationPanel();
-							this.plugin.ensureFloatingPopupContainer();
-						} else {
-							this.plugin.closeTranslationPanel();
-							this.plugin.closeFloatingPopup();
-						}
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("挿入テンプレート")
-			.setDesc("{{translation}}, {{original}}, {{targetLanguage}}, {{page}} を使って出力を整形します。")
-			.addTextArea((area) =>
-				area
-					.setValue(this.plugin.settings.insertTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.insertTemplate =
-							value || DEFAULT_SETTINGS.insertTemplate;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
 			.setName("タイムアウト (ms)")
 			.setDesc("Gemini APIの応答待ち時間をミリ秒で指定します。")
 			.addText((text) =>
@@ -932,51 +489,12 @@ class PdfInlineTranslatePlugin extends Plugin {
 		this.autoTranslateTimer = null;
 		this.lastAutoTranslateKey = null;
 		this.lastAutoTranslateTriggeredAt = 0;
-		this.panelAbortController = null;
 		this.popupAbortController = null;
 		this.floatingPopup = null;
 		this.isPointerSelecting = false;
+		this.manuallyClosedSelectionKey = null;
 
-		this.registerView(
-			VIEW_TYPE_TRANSLATION_PANEL,
-			(leaf) => new GeminiTranslationPanelView(leaf, this),
-		);
-
-		this.addSettingTab(
-			new PdfInlineTranslateSettingTab(this.app, this),
-		);
-
-		this.registerEvent(
-			this.app.workspace.on("pdf-menu", (menu, data) => {
-				const selection = data?.selection;
-				if (!selection || !selection.trim?.()) {
-					return;
-				}
-
-				menu.addItem((item) => {
-					item.setTitle("Geminiで翻訳");
-					item.setIcon("languages");
-					item.onClick(() => {
-						this.openTranslation(selection.trim(), data);
-					});
-				});
-			}),
-		);
-
-		this.addCommand({
-			id: "translate-last-pdf-selection-with-gemini",
-			name: "直前に取得したPDF選択範囲を翻訳",
-			checkCallback: (checking) => {
-				if (!this.lastSelection) return false;
-				if (!checking) {
-					this.openTranslation(
-						this.lastSelection.text,
-						this.lastSelection.context,
-					);
-				}
-				return true;
-			},
-		});
+		this.addSettingTab(new PdfInlineTranslateSettingTab(this.app, this));
 
 		this.registerDomEvent(document, "selectionchange", () => {
 			this.scheduleAutoTranslateCheck();
@@ -1010,14 +528,6 @@ class PdfInlineTranslatePlugin extends Plugin {
 				cancelTimer(this.autoTranslateTimer);
 				this.autoTranslateTimer = null;
 			}
-			if (this.panelAbortController) {
-				try {
-					this.panelAbortController.abort();
-				} catch (error) {
-					console.error(error);
-				}
-				this.panelAbortController = null;
-			}
 			if (this.popupAbortController) {
 				try {
 					this.popupAbortController.abort();
@@ -1031,13 +541,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 		});
 
 		this.app.workspace.onLayoutReady(() => {
-			if (this.settings.displayMode === DISPLAY_MODE_PANEL) {
-				this.ensureTranslationPanel().catch((error) =>
-					console.error("PDF Inline Translate: パネル初期化に失敗しました。", error),
-				);
-			} else if (this.settings.displayMode === DISPLAY_MODE_POPUP) {
-				this.ensureFloatingPopupContainer();
-			}
+			this.ensureFloatingPopupContainer();
 		});
 
 		if (!window.pdfPlus) {
@@ -1049,13 +553,11 @@ class PdfInlineTranslatePlugin extends Plugin {
 
 	onunload() {
 		console.info("PDF Inline Translate (Gemini) アンロード");
-		this.closeTranslationPanel();
 		this.destroyFloatingPopup();
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
+		this.settings = Object.assign({},
 			DEFAULT_SETTINGS,
 			await this.loadData(),
 		);
@@ -1078,95 +580,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 			text: selectionText,
 			context: preparedContext,
 		};
-		if (this.settings.displayMode === DISPLAY_MODE_PANEL) {
-			this.closeFloatingPopup();
-			void this.openTranslationInPanel(selectionText, preparedContext);
-			return;
-		}
-		if (this.settings.displayMode === DISPLAY_MODE_POPUP) {
-			this.closeTranslationPanel();
-			void this.openTranslationInPopup(selectionText, preparedContext);
-			return;
-		}
-		this.closeTranslationPanel();
-		this.closeFloatingPopup();
-		new GeminiTranslationModal(
-			this.app,
-			this,
-			selectionText,
-			preparedContext,
-		).open();
-	}
-
-	async openTranslationInPanel(selectionText, context) {
-		let view;
-		try {
-			const leaf = await this.getOrCreateTranslationPanelLeaf();
-			view = leaf?.view;
-		} catch (error) {
-			console.error("PDF Inline Translate: パネルを開けませんでした。", error);
-			new Notice("翻訳パネルを開くことができませんでした。詳細はコンソールを確認してください。");
-			return;
-		}
-
-		if (!(view instanceof GeminiTranslationPanelView)) {
-			new Notice("翻訳パネルが利用できません。");
-			return;
-		}
-
-		view.showLoading(selectionText, context ?? {});
-
-		if (this.panelAbortController) {
-			try {
-				this.panelAbortController.abort();
-			} catch (error) {
-				console.error(error);
-			}
-		}
-		const abortController = new AbortController();
-		this.panelAbortController = abortController;
-
-		try {
-			const translation = await this.requestTranslation(
-				selectionText,
-				context,
-				abortController.signal,
-			);
-			if (abortController.signal.aborted) {
-				view.showCancelled(selectionText, context ?? {});
-				return;
-			}
-			view.showResult(selectionText, translation, context ?? {});
-			if (this.settings.autoPasteToEditor) {
-				const inserted = await this.insertIntoActiveEditor(
-					selectionText,
-					translation,
-					context,
-				);
-				if (inserted) {
-					new Notice("翻訳結果をアクティブなノートへ挿入しました。");
-				}
-			}
-		} catch (error) {
-			if (abortController.signal.aborted) {
-				view.showCancelled(selectionText, context ?? {});
-				return;
-			}
-			console.error(error);
-			const message =
-				error?.message ??
-				"翻訳に失敗しました。詳細はコンソールをご確認ください。";
-			view.showError(selectionText, context ?? {}, message);
-			new Notice(
-				error?.message
-					? `Gemini翻訳エラー: ${error.message}`
-					: "Gemini翻訳に失敗しました。",
-			);
-		} finally {
-			if (this.panelAbortController === abortController) {
-				this.panelAbortController = null;
-			}
-		}
+		void this.openTranslationInPopup(selectionText, preparedContext);
 	}
 
 	async openTranslationInPopup(selectionText, context) {
@@ -1211,16 +625,6 @@ class PdfInlineTranslatePlugin extends Plugin {
 				return;
 			}
 			popup.showResult(selectionText, translation, safeContext);
-			if (this.settings.autoPasteToEditor) {
-				const inserted = await this.insertIntoActiveEditor(
-					selectionText,
-					translation,
-					context,
-				);
-				if (inserted) {
-					new Notice("翻訳結果をアクティブなノートへ挿入しました。");
-				}
-			}
 		} catch (error) {
 			if (abortController.signal.aborted) {
 				popup.showCancelled(selectionText, safeContext);
@@ -1243,37 +647,6 @@ class PdfInlineTranslatePlugin extends Plugin {
 		}
 	}
 
-	async ensureTranslationPanel() {
-		if (this.settings.displayMode !== DISPLAY_MODE_PANEL) {
-			return;
-		}
-		try {
-			const leaf = await this.getOrCreateTranslationPanelLeaf();
-			const view = leaf?.view;
-			if (view instanceof GeminiTranslationPanelView) {
-				view.renderWelcome();
-			}
-		} catch (error) {
-			console.error("PDF Inline Translate: 翻訳パネル初期化エラー", error);
-		}
-	}
-
-	closeTranslationPanel() {
-		const leaves =
-			this.app.workspace.getLeavesOfType(VIEW_TYPE_TRANSLATION_PANEL);
-		for (const leaf of leaves) {
-			leaf.detach();
-		}
-		if (this.panelAbortController) {
-			try {
-				this.panelAbortController.abort();
-			} catch (error) {
-				console.error(error);
-			}
-			this.panelAbortController = null;
-		}
-	}
-
 	ensureFloatingPopupContainer() {
 		this.getOrCreateFloatingPopup();
 	}
@@ -1291,6 +664,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 	}
 
 	handleFloatingPopupClosed() {
+		this.manuallyClosedSelectionKey = this.lastAutoTranslateKey;
 		if (this.popupAbortController) {
 			try {
 				this.popupAbortController.abort();
@@ -1316,30 +690,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 		}
 	}
 
-	async getOrCreateTranslationPanelLeaf() {
-		const existing =
-			this.app.workspace.getLeavesOfType(VIEW_TYPE_TRANSLATION_PANEL);
-		if (existing.length > 0) {
-			return existing[0];
-		}
-		let leaf = this.app.workspace.getRightLeaf(false);
-		if (!leaf) {
-			leaf = this.app.workspace.getLeaf(true);
-		}
-		if (!leaf) {
-			throw new Error("ワークスペースのリーフを取得できません。");
-		}
-		await leaf.setViewState({
-			type: VIEW_TYPE_TRANSLATION_PANEL,
-			active: false,
-		});
-		return leaf;
-	}
-
 	scheduleAutoTranslateCheck(delay = AUTO_TRANSLATE_DEBOUNCE_MS) {
-		if (!this.settings.autoTranslateOnSelection) {
-			return;
-		}
 		if (
 			typeof document !== "undefined" &&
 			typeof document.hasFocus === "function" &&
@@ -1359,30 +710,29 @@ class PdfInlineTranslatePlugin extends Plugin {
 	}
 
 	handleSelectionForAutoTranslate() {
-		if (!this.settings.autoTranslateOnSelection) {
-			return;
-		}
-
 		if (this.isPointerSelecting) {
 			this.scheduleAutoTranslateCheck();
 			return;
 		}
 
 		const selection = window.getSelection?.();
-		if (!selection || selection.rangeCount === 0) {
-			return;
-		}
-		const text = selection.toString().trim();
-		if (!text) {
-			return;
-		}
+		const text = selection?.toString().trim();
+		const context = text ? this.resolvePdfSelectionContext(selection, text) : null;
 
-		const context = this.resolvePdfSelectionContext(selection, text);
-		if (!context) {
+		if (!text || !context) {
+			this.closeFloatingPopup();
+			if (this.manuallyClosedSelectionKey) {
+				this.manuallyClosedSelectionKey = null;
+			}
 			return;
 		}
 
 		const key = `${context.pageNumber ?? "N/A"}|${text}`;
+
+		if (this.manuallyClosedSelectionKey === key) {
+			return;
+		}
+
 		const now = Date.now();
 		if (
 			this.lastAutoTranslateKey === key &&
@@ -1391,6 +741,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 			return;
 		}
 
+		this.manuallyClosedSelectionKey = null;
 		this.lastAutoTranslateKey = key;
 		this.lastAutoTranslateTriggeredAt = now;
 		this.openTranslation(text, context);
@@ -1620,22 +971,6 @@ class PdfInlineTranslatePlugin extends Plugin {
 				"{{page}}",
 				context?.pageNumber != null ? String(context.pageNumber) : "N/A",
 			);
-	}
-
-	async insertIntoActiveEditor(original, translation, context) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!view) return false;
-
-		const pageLabel =
-			context?.pageNumber != null ? String(context.pageNumber) : "N/A";
-		const formatted = this.settings.insertTemplate
-			.replaceAll("{{original}}", original)
-			.replaceAll("{{translation}}", translation)
-			.replaceAll("{{targetLanguage}}", this.settings.targetLanguage)
-			.replaceAll("{{page}}", pageLabel);
-
-		view.editor.replaceSelection(`${formatted}\n`);
-		return true;
 	}
 }
 
