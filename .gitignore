@@ -1,0 +1,11 @@
+# Node 環境の依存ファイル
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
+
+# Obsidian プラグイン開発の一時ファイル
+data.json
+*.log

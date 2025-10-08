@@ -1,0 +1,10 @@
+{
+  "id": "pdf-inline-translate",
+  "name": "PDF Inline Translate (Gemini)",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.12",
+  "description": "PDF++で表示したPDF内の選択範囲をGoogle Geminiで翻訳するためのコンテキストメニューを追加します。",
+  "author": "reo",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}

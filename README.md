@@ -1,3 +1,38 @@
-# PDF Inline Translate for Obsidian
+# PDF Inline Translate (Gemini)
 
-Obsidian の PDF ビューアで選択したテキストを Google Gemini（gemini-2.5-flash-lite）に送信し、翻訳するプラグイン。PDF++プラグインとの併用を前提に作成。
+PDF++ プラグインで表示した PDF 内の選択テキストを Google Gemini に送信し、即座に翻訳結果を表示・コピーできる Obsidian プラグインです。
+
+## 主な機能
+- PDF++ の PDF ビューア右クリックメニューへ「Geminiで翻訳」を追加
+- 翻訳結果をモーダルに表示し、クリップボードへコピー
+- 任意の Markdown ノートへ翻訳結果を自動挿入（オプション）
+- 学術論文 PDF の読解を想定した翻訳プロンプトを同梱（補足説明は付けずに訳出）
+- Gemini モデル名、出力言語、プロンプトテンプレートなどを柔軟に設定
+
+## 動作要件
+- Obsidian 1.5.12 以降
+- [PDF++ プラグイン](https://github.com/RyotaUshio/obsidian-pdf-plus) が有効化されていること
+- [Google AI Studio](https://aistudio.google.com/) で発行した Gemini API キー
+
+## 使い方
+1. 本プラグインを `.obsidian/plugins/pdf-inline-translate` フォルダに配置します。
+2. Obsidian でプラグインを有効化し、設定画面の「Gemini APIキー」に API キーを入力します。
+3. PDF++ で PDF を開き、翻訳したいテキストを選択して右クリックします。
+4. コンテキストメニューから「Geminiで翻訳」を選ぶと翻訳モーダルが開きます。
+5. 結果はコピー可能で、設定によりアクティブな Markdown へ自動挿入されます。
+
+## 設定項目
+- **Gemini APIキー**: Google AI Studio で発行したキーを入力します。
+- **モデル**: 利用する Gemini モデル名（例: `gemini-2.5-flash-lite`）。
+- **出力言語**: 翻訳結果を出力する言語。
+- **システム指示**: モデルに与える前提指示や翻訳スタイルを記述。
+- **プロンプトテンプレート**: `{{text}}`, `{{targetLanguage}}`, `{{page}}` を利用して翻訳用プロンプトをカスタマイズ。初期値は論文向けの直訳調テンプレートです。
+- **温度 / 最大出力トークン**: Gemini の出力スタイルおよび最大長の調整。
+- **翻訳結果を自動挿入**: 翻訳結果をアクティブな Markdown ノートへ自動で挿入。
+- **挿入テンプレート**: 自動挿入時の Markdown 形式を指定。
+- **タイムアウト (ms)**: 翻訳 API 呼び出しが中断されるまでの時間。
+
+## 注意点
+- Gemini API の利用には従量課金が発生する場合があります。ご利用前に料金体系をご確認ください。
+- PDF++ 側でテキスト選択が行えない PDF では翻訳メニューが表示されません。
+- Obsidian モバイルではクリップボード API が利用できない場合があります。
