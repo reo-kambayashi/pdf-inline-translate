@@ -9,3 +9,5 @@ yarn-error.log*
 # Obsidian プラグイン開発の一時ファイル
 data.json
 *.log
+
+AGENTS.md
