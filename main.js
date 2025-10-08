@@ -26,13 +26,14 @@ const DEFAULT_SETTINGS = {
 		"> [!note] PDF翻訳 (pdf++ page {{page}})\n> 原文: {{original}}\n\n{{translation}}\n",
 	timeoutMs: 20000,
 	autoTranslateOnSelection: false,
-	displayMode: "modal",
+	displayMode: "popup",
 };
 
 const AUTO_TRANSLATE_DEBOUNCE_MS = 350;
 const AUTO_TRANSLATE_REPEAT_THRESHOLD_MS = 1500;
 const DISPLAY_MODE_MODAL = "modal";
 const DISPLAY_MODE_PANEL = "panel";
+const DISPLAY_MODE_POPUP = "popup";
 const VIEW_TYPE_TRANSLATION_PANEL = "pdf-inline-translate-panel";
 
 class GeminiTranslationModal extends Modal {
@@ -381,6 +382,348 @@ class GeminiTranslationPanelView extends ItemView {
 	}
 }
 
+class GeminiTranslationFloatingPopup {
+	/**
+	 * @param {PdfInlineTranslatePlugin} plugin
+	 */
+	constructor(plugin) {
+		this.plugin = plugin;
+		this.container = null;
+		this.statusEl = null;
+		this.translationEl = null;
+		this.copyButton = null;
+		this.translationText = "";
+		this.onClose = null;
+		this.dragState = null;
+		this.lastPosition = null;
+		this.boundOnKeydown = this.handleKeydown.bind(this);
+		this.boundOnDrag = this.onDrag.bind(this);
+		this.boundOnDragEnd = this.onDragEnd.bind(this);
+	}
+
+	setCloseHandler(handler) {
+		this.onClose = handler;
+	}
+
+	showLoading(original, context) {
+		this.renderBase(original, context);
+		if (this.statusEl) {
+			this.statusEl.textContent = "Geminiに問い合わせ中…";
+		}
+		this.translationText = "";
+		this.toggleCopyButton(false);
+		if (this.translationEl) {
+			this.translationEl.innerHTML = "";
+		}
+	}
+
+	showResult(original, translation, context) {
+		this.renderBase(original, context);
+		this.translationText = translation;
+		if (this.translationEl) {
+			this.translationEl.innerHTML = "";
+			const pre = document.createElement("pre");
+			pre.className = "pdf-inline-translate__translation-text";
+			pre.textContent = translation;
+			this.translationEl.appendChild(pre);
+		}
+		if (this.statusEl) {
+			this.statusEl.textContent = "翻訳完了";
+		}
+		this.toggleCopyButton(true);
+	}
+
+	showCancelled(original, context) {
+		this.renderBase(original, context);
+		if (this.statusEl) {
+			this.statusEl.textContent = "翻訳を中断しました。";
+		}
+		this.toggleCopyButton(false);
+	}
+
+	showError(original, context, message) {
+		this.renderBase(original, context);
+		if (this.statusEl) {
+			this.statusEl.textContent = message;
+		}
+		this.toggleCopyButton(false);
+	}
+
+	hide() {
+		if (!this.container) return;
+		this.container.style.display = "none";
+		this.container.setAttribute("aria-hidden", "true");
+		this.statusEl = null;
+		this.translationEl = null;
+		this.copyButton = null;
+	}
+
+	destroy() {
+		if (!this.container) return;
+		this.stopDragging();
+		this.container.removeEventListener("keydown", this.boundOnKeydown);
+		this.container.remove();
+		this.container = null;
+		this.statusEl = null;
+		this.translationEl = null;
+		this.copyButton = null;
+	}
+
+	focus() {
+		if (!this.container) return;
+		if (typeof this.container.focus === "function") {
+			this.container.focus({ preventScroll: true });
+		}
+	}
+
+	renderBase(original, context) {
+		this.ensureContainer();
+		const container = this.container;
+		if (!container) {
+			return;
+		}
+
+		container.style.display = "flex";
+		container.setAttribute("aria-hidden", "false");
+		container.innerHTML = "";
+
+		const header = document.createElement("div");
+		header.className = "pdf-inline-translate__popup-header";
+		container.appendChild(header);
+
+		const title = document.createElement("h2");
+		title.textContent = "Gemini翻訳";
+		header.appendChild(title);
+
+		const headerActions = document.createElement("div");
+		headerActions.className = "pdf-inline-translate__popup-actions";
+		header.appendChild(headerActions);
+
+		const closeButton = document.createElement("button");
+		closeButton.type = "button";
+		closeButton.className = "pdf-inline-translate__popup-close";
+		closeButton.innerHTML = "&times;";
+		closeButton.addEventListener("click", () => this.handleClose());
+		headerActions.appendChild(closeButton);
+
+		header.addEventListener("pointerdown", (event) => this.startDrag(event));
+
+		const body = document.createElement("div");
+		body.className = "pdf-inline-translate__popup-body";
+		container.appendChild(body);
+
+		const info = document.createElement("div");
+		info.className = "pdf-inline-translate__section";
+		info.textContent =
+			context?.pageNumber != null
+				? `PDFページ: ${context.pageNumber}`
+				: "ページ番号情報なし";
+		body.appendChild(info);
+
+		const originalDetails = document.createElement("details");
+		originalDetails.className = "pdf-inline-translate__original";
+		body.appendChild(originalDetails);
+
+		const summary = document.createElement("summary");
+		summary.textContent = "原文を表示";
+		originalDetails.appendChild(summary);
+
+		const pre = document.createElement("pre");
+		pre.textContent = original;
+		originalDetails.appendChild(pre);
+
+		this.statusEl = document.createElement("p");
+		this.statusEl.className = "pdf-inline-translate__status";
+		body.appendChild(this.statusEl);
+
+		this.translationEl = document.createElement("div");
+		this.translationEl.className = "pdf-inline-translate__translation";
+		body.appendChild(this.translationEl);
+
+		const buttonRow = document.createElement("div");
+		buttonRow.className = "pdf-inline-translate__buttons";
+		body.appendChild(buttonRow);
+
+		this.copyButton = document.createElement("button");
+		this.copyButton.type = "button";
+		this.copyButton.className = "mod-cta";
+		this.copyButton.textContent = "コピー";
+		this.copyButton.setAttribute("disabled", "true");
+		this.copyButton.addEventListener("click", () => {
+			if (!this.translationText) {
+				return;
+			}
+			if (navigator?.clipboard?.writeText) {
+				navigator.clipboard.writeText(this.translationText).then(
+					() => new Notice("翻訳結果をクリップボードにコピーしました。"),
+					(err) => {
+						console.error(err);
+						new Notice("クリップボードへのコピーに失敗しました。");
+					},
+				);
+			} else {
+				new Notice("クリップボードAPIが使用できません。手動でコピーしてください。");
+			}
+		});
+		buttonRow.appendChild(this.copyButton);
+
+		this.focus();
+		this.setPositionFromContext(context);
+	}
+
+	ensureContainer() {
+		if (this.container) return;
+		if (!document || !document.body) return;
+		const container = document.createElement("div");
+		container.className = "pdf-inline-translate__popup";
+		container.setAttribute("role", "dialog");
+		container.setAttribute("aria-label", "Gemini翻訳");
+		container.setAttribute("aria-hidden", "true");
+		container.tabIndex = -1;
+		container.style.display = "none";
+		container.addEventListener("keydown", this.boundOnKeydown);
+		document.body.appendChild(container);
+		this.container = container;
+	}
+
+	handleClose() {
+		this.hide();
+		if (typeof this.onClose === "function") {
+			this.onClose();
+		}
+	}
+
+	handleKeydown(event) {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			this.handleClose();
+		}
+	}
+
+	startDrag(event) {
+		if (event.button !== 0) {
+			return;
+		}
+		if (event.target.closest(".pdf-inline-translate__popup-close")) {
+			return;
+		}
+		if (!this.container) {
+			return;
+		}
+		event.preventDefault();
+		const rect = this.container.getBoundingClientRect();
+		this.dragState = {
+			pointerId: event.pointerId,
+			offsetX: event.clientX - rect.left,
+			offsetY: event.clientY - rect.top,
+		};
+		this.container.classList.add("is-dragging");
+		try {
+			this.container.setPointerCapture?.(event.pointerId);
+		} catch (error) {
+			console.debug("PDF Inline Translate: pointer capture失敗", error);
+		}
+		document.addEventListener("pointermove", this.boundOnDrag);
+		document.addEventListener("pointerup", this.boundOnDragEnd);
+	}
+
+	onDrag(event) {
+		if (!this.dragState || !this.container) {
+			return;
+		}
+		const top = event.clientY - this.dragState.offsetY;
+		const left = event.clientX - this.dragState.offsetX;
+		this.applyPosition(top, left);
+	}
+
+	onDragEnd(event) {
+		if (!this.dragState || !this.container) {
+			this.stopDragging();
+			return;
+		}
+		if (this.dragState.pointerId != null) {
+			try {
+				this.container.releasePointerCapture?.(this.dragState.pointerId);
+			} catch (error) {
+				console.debug("PDF Inline Translate: pointer release失敗", error);
+			}
+		}
+		this.stopDragging();
+	}
+
+	stopDragging() {
+		if (this.container) {
+			this.container.classList.remove("is-dragging");
+		}
+		this.dragState = null;
+		document.removeEventListener("pointermove", this.boundOnDrag);
+		document.removeEventListener("pointerup", this.boundOnDragEnd);
+	}
+
+	setPositionFromContext(context) {
+		if (!this.container) return;
+		const rect =
+			context?.rect && this.isValidRect(context.rect)
+				? context.rect
+				: null;
+		const schedule = window?.requestAnimationFrame ?? ((fn) => setTimeout(fn, 16));
+		schedule(() => {
+			if (!this.container) {
+				return;
+			}
+			if (rect) {
+				const top = rect.top + rect.height + 12;
+				const left = rect.left;
+				this.applyPosition(top, left);
+			} else if (this.lastPosition) {
+				this.applyPosition(this.lastPosition.top, this.lastPosition.left);
+			} else {
+				const defaultTop = 24;
+				const defaultLeft = window.innerWidth - this.container.offsetWidth - 24;
+				this.applyPosition(defaultTop, defaultLeft);
+			}
+		});
+	}
+
+	applyPosition(top, left) {
+		if (!this.container) return;
+		const containerRect = this.container.getBoundingClientRect();
+		const maxTop = window.innerHeight - containerRect.height - 12;
+		const maxLeft = window.innerWidth - containerRect.width - 12;
+		const clampedTop = this.clamp(top, 12, Math.max(12, maxTop));
+		const clampedLeft = this.clamp(left, 12, Math.max(12, maxLeft));
+		this.container.style.top = `${clampedTop}px`;
+		this.container.style.left = `${clampedLeft}px`;
+		this.lastPosition = { top: clampedTop, left: clampedLeft };
+	}
+
+	toggleCopyButton(isEnabled) {
+		if (!this.copyButton) return;
+		if (isEnabled) {
+			this.copyButton.removeAttribute("disabled");
+		} else {
+			this.copyButton.setAttribute("disabled", "true");
+		}
+	}
+
+	isValidRect(rect) {
+		return (
+			rect &&
+			typeof rect.top === "number" &&
+			typeof rect.left === "number" &&
+			typeof rect.height === "number" &&
+			typeof rect.width === "number"
+		);
+	}
+
+	clamp(value, min, max) {
+		if (!Number.isFinite(value)) {
+			return min;
+		}
+		return Math.min(Math.max(value, min), max);
+	}
+}
+
 class PdfInlineTranslateSettingTab extends PluginSettingTab {
 	/**
 	 * @param {import("obsidian").App} app
@@ -514,27 +857,39 @@ class PdfInlineTranslateSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("翻訳結果の表示方法")
-			.setDesc("モーダル表示かサイドパネル表示かを切り替えます。")
+			.setDesc("モーダル / サイドパネル / フローティングポップアップを切り替えます。")
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption(DISPLAY_MODE_MODAL, "モーダル (操作を一時停止)")
 					.addOption(DISPLAY_MODE_PANEL, "サイドパネル (操作を継続)")
+					.addOption(DISPLAY_MODE_POPUP, "フローティングポップアップ (操作を継続)")
 					.setValue(
-						[this.plugin.settings.displayMode].includes(DISPLAY_MODE_PANEL)
-							? DISPLAY_MODE_PANEL
+						[DISPLAY_MODE_MODAL, DISPLAY_MODE_PANEL, DISPLAY_MODE_POPUP].includes(
+							this.plugin.settings.displayMode,
+						)
+							? this.plugin.settings.displayMode
 							: DISPLAY_MODE_MODAL,
 					)
 					.onChange(async (value) => {
-						const nextValue =
-							value === DISPLAY_MODE_PANEL
-								? DISPLAY_MODE_PANEL
-								: DISPLAY_MODE_MODAL;
+						const candidates = [
+							DISPLAY_MODE_MODAL,
+							DISPLAY_MODE_PANEL,
+							DISPLAY_MODE_POPUP,
+						];
+						const nextValue = candidates.includes(value)
+							? value
+							: DISPLAY_MODE_MODAL;
 						this.plugin.settings.displayMode = nextValue;
 						await this.plugin.saveSettings();
 						if (nextValue === DISPLAY_MODE_PANEL) {
 							await this.plugin.ensureTranslationPanel();
+							this.plugin.closeFloatingPopup();
+						} else if (nextValue === DISPLAY_MODE_POPUP) {
+							this.plugin.closeTranslationPanel();
+							this.plugin.ensureFloatingPopupContainer();
 						} else {
 							this.plugin.closeTranslationPanel();
+							this.plugin.closeFloatingPopup();
 						}
 					}),
 			);
@@ -578,6 +933,9 @@ class PdfInlineTranslatePlugin extends Plugin {
 		this.lastAutoTranslateKey = null;
 		this.lastAutoTranslateTriggeredAt = 0;
 		this.panelAbortController = null;
+		this.popupAbortController = null;
+		this.floatingPopup = null;
+		this.isPointerSelecting = false;
 
 		this.registerView(
 			VIEW_TYPE_TRANSLATION_PANEL,
@@ -621,21 +979,29 @@ class PdfInlineTranslatePlugin extends Plugin {
 		});
 
 		this.registerDomEvent(document, "selectionchange", () => {
-			if (!this.settings.autoTranslateOnSelection) {
-				return;
-			}
-			if (!document.hasFocus()) {
-				return;
-			}
+			this.scheduleAutoTranslateCheck();
+		});
+
+		this.registerDomEvent(document, "pointerdown", () => {
+			this.isPointerSelecting = true;
 			const cancelTimer = window?.clearTimeout ?? clearTimeout;
 			if (this.autoTranslateTimer) {
 				cancelTimer(this.autoTranslateTimer);
-			}
-			const schedule = window?.setTimeout ?? setTimeout;
-			this.autoTranslateTimer = schedule(() => {
 				this.autoTranslateTimer = null;
-				this.handleSelectionForAutoTranslate();
-			}, AUTO_TRANSLATE_DEBOUNCE_MS);
+			}
+		});
+
+		this.registerDomEvent(document, "pointerup", () => {
+			this.isPointerSelecting = false;
+			this.scheduleAutoTranslateCheck();
+		});
+
+		this.registerDomEvent(document, "pointercancel", () => {
+			this.isPointerSelecting = false;
+		});
+
+		this.registerDomEvent(window, "blur", () => {
+			this.isPointerSelecting = false;
 		});
 
 		this.register(() => {
@@ -652,6 +1018,16 @@ class PdfInlineTranslatePlugin extends Plugin {
 				}
 				this.panelAbortController = null;
 			}
+			if (this.popupAbortController) {
+				try {
+					this.popupAbortController.abort();
+				} catch (error) {
+					console.error(error);
+				}
+				this.popupAbortController = null;
+			}
+			this.destroyFloatingPopup();
+			this.isPointerSelecting = false;
 		});
 
 		this.app.workspace.onLayoutReady(() => {
@@ -659,6 +1035,8 @@ class PdfInlineTranslatePlugin extends Plugin {
 				this.ensureTranslationPanel().catch((error) =>
 					console.error("PDF Inline Translate: パネル初期化に失敗しました。", error),
 				);
+			} else if (this.settings.displayMode === DISPLAY_MODE_POPUP) {
+				this.ensureFloatingPopupContainer();
 			}
 		});
 
@@ -672,6 +1050,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 	onunload() {
 		console.info("PDF Inline Translate (Gemini) アンロード");
 		this.closeTranslationPanel();
+		this.destroyFloatingPopup();
 	}
 
 	async loadSettings() {
@@ -693,15 +1072,30 @@ class PdfInlineTranslatePlugin extends Plugin {
 			return;
 		}
 
+		const preparedContext = this.prepareContext(context);
+
 		this.lastSelection = {
 			text: selectionText,
-			context,
+			context: preparedContext,
 		};
 		if (this.settings.displayMode === DISPLAY_MODE_PANEL) {
-			void this.openTranslationInPanel(selectionText, context);
+			this.closeFloatingPopup();
+			void this.openTranslationInPanel(selectionText, preparedContext);
 			return;
 		}
-		new GeminiTranslationModal(this.app, this, selectionText, context).open();
+		if (this.settings.displayMode === DISPLAY_MODE_POPUP) {
+			this.closeTranslationPanel();
+			void this.openTranslationInPopup(selectionText, preparedContext);
+			return;
+		}
+		this.closeTranslationPanel();
+		this.closeFloatingPopup();
+		new GeminiTranslationModal(
+			this.app,
+			this,
+			selectionText,
+			preparedContext,
+		).open();
 	}
 
 	async openTranslationInPanel(selectionText, context) {
@@ -775,6 +1169,80 @@ class PdfInlineTranslatePlugin extends Plugin {
 		}
 	}
 
+	async openTranslationInPopup(selectionText, context) {
+		let popup;
+		try {
+			popup = this.getOrCreateFloatingPopup();
+		} catch (error) {
+			console.error("PDF Inline Translate: ポップアップを初期化できませんでした。", error);
+			new Notice(
+				"翻訳ポップアップを開くことができませんでした。詳細はコンソールを確認してください。",
+			);
+			return;
+		}
+
+		if (!popup) {
+			new Notice("翻訳ポップアップが利用できません。");
+			return;
+		}
+
+		const safeContext = context ?? {};
+		popup.showLoading(selectionText, safeContext);
+		popup.focus();
+
+		if (this.popupAbortController) {
+			try {
+				this.popupAbortController.abort();
+			} catch (error) {
+				console.error(error);
+			}
+		}
+		const abortController = new AbortController();
+		this.popupAbortController = abortController;
+
+		try {
+			const translation = await this.requestTranslation(
+				selectionText,
+				context,
+				abortController.signal,
+			);
+			if (abortController.signal.aborted) {
+				popup.showCancelled(selectionText, safeContext);
+				return;
+			}
+			popup.showResult(selectionText, translation, safeContext);
+			if (this.settings.autoPasteToEditor) {
+				const inserted = await this.insertIntoActiveEditor(
+					selectionText,
+					translation,
+					context,
+				);
+				if (inserted) {
+					new Notice("翻訳結果をアクティブなノートへ挿入しました。");
+				}
+			}
+		} catch (error) {
+			if (abortController.signal.aborted) {
+				popup.showCancelled(selectionText, safeContext);
+				return;
+			}
+			console.error(error);
+			const message =
+				error?.message ??
+				"翻訳に失敗しました。詳細はコンソールをご確認ください。";
+			popup.showError(selectionText, safeContext, message);
+			new Notice(
+				error?.message
+					? `Gemini翻訳エラー: ${error.message}`
+					: "Gemini翻訳に失敗しました。",
+			);
+		} finally {
+			if (this.popupAbortController === abortController) {
+				this.popupAbortController = null;
+			}
+		}
+	}
+
 	async ensureTranslationPanel() {
 		if (this.settings.displayMode !== DISPLAY_MODE_PANEL) {
 			return;
@@ -806,6 +1274,48 @@ class PdfInlineTranslatePlugin extends Plugin {
 		}
 	}
 
+	ensureFloatingPopupContainer() {
+		this.getOrCreateFloatingPopup();
+	}
+
+	getOrCreateFloatingPopup() {
+		if (this.floatingPopup) {
+			return this.floatingPopup;
+		}
+		const popup = new GeminiTranslationFloatingPopup(this);
+		popup.setCloseHandler(() => {
+			this.handleFloatingPopupClosed();
+		});
+		this.floatingPopup = popup;
+		return popup;
+	}
+
+	handleFloatingPopupClosed() {
+		if (this.popupAbortController) {
+			try {
+				this.popupAbortController.abort();
+			} catch (error) {
+				console.error(error);
+			}
+			this.popupAbortController = null;
+		}
+		if (this.floatingPopup) {
+			this.floatingPopup.hide();
+		}
+	}
+
+	closeFloatingPopup() {
+		this.handleFloatingPopupClosed();
+	}
+
+	destroyFloatingPopup() {
+		this.handleFloatingPopupClosed();
+		if (this.floatingPopup) {
+			this.floatingPopup.destroy();
+			this.floatingPopup = null;
+		}
+	}
+
 	async getOrCreateTranslationPanelLeaf() {
 		const existing =
 			this.app.workspace.getLeavesOfType(VIEW_TYPE_TRANSLATION_PANEL);
@@ -826,8 +1336,35 @@ class PdfInlineTranslatePlugin extends Plugin {
 		return leaf;
 	}
 
+	scheduleAutoTranslateCheck(delay = AUTO_TRANSLATE_DEBOUNCE_MS) {
+		if (!this.settings.autoTranslateOnSelection) {
+			return;
+		}
+		if (
+			typeof document !== "undefined" &&
+			typeof document.hasFocus === "function" &&
+			!document.hasFocus()
+		) {
+			return;
+		}
+		const cancelTimer = window?.clearTimeout ?? clearTimeout;
+		if (this.autoTranslateTimer) {
+			cancelTimer(this.autoTranslateTimer);
+		}
+		const schedule = window?.setTimeout ?? setTimeout;
+		this.autoTranslateTimer = schedule(() => {
+			this.autoTranslateTimer = null;
+			this.handleSelectionForAutoTranslate();
+		}, Math.max(0, delay));
+	}
+
 	handleSelectionForAutoTranslate() {
 		if (!this.settings.autoTranslateOnSelection) {
+			return;
+		}
+
+		if (this.isPointerSelecting) {
+			this.scheduleAutoTranslateCheck();
 			return;
 		}
 
@@ -859,6 +1396,85 @@ class PdfInlineTranslatePlugin extends Plugin {
 		this.openTranslation(text, context);
 	}
 
+	prepareContext(context) {
+		const base =
+			context && typeof context === "object"
+				? { ...context }
+				: {};
+		if (!base.rect) {
+			const rect = this.getActiveSelectionRect();
+			if (rect) {
+				base.rect = rect;
+			}
+		}
+		return base;
+	}
+
+	getActiveSelectionRect() {
+		const selection = window.getSelection?.();
+		if (!selection || selection.rangeCount === 0) {
+			return null;
+		}
+		try {
+			const range = selection.getRangeAt(0);
+			return this.extractRectFromRange(range);
+		} catch (error) {
+			console.debug("PDF Inline Translate: selection rect取得失敗", error);
+			return null;
+		}
+	}
+
+	extractRectFromRange(range) {
+		if (!range || typeof range.getBoundingClientRect !== "function") {
+			return null;
+		}
+		let rect;
+		try {
+			rect = range.getBoundingClientRect();
+		} catch (error) {
+			console.debug("PDF Inline Translate: bounding rect取得失敗", error);
+			return null;
+		}
+		if (!rect) {
+			return null;
+		}
+
+		const makePlainRect = (domRect) => ({
+			top: Number(domRect.top),
+			left: Number(domRect.left),
+			width: Number(domRect.width),
+			height: Number(domRect.height),
+		});
+
+		if (rect.width > 0 || rect.height > 0) {
+			return makePlainRect(rect);
+		}
+
+		if (typeof range.getClientRects !== "function") {
+			return null;
+		}
+		const rects = Array.from(range.getClientRects?.() ?? []);
+		if (rects.length === 0) {
+			return null;
+		}
+		let top = rects[0].top;
+		let left = rects[0].left;
+		let right = rects[0].right;
+		let bottom = rects[0].bottom;
+		for (const item of rects) {
+			top = Math.min(top, item.top);
+			left = Math.min(left, item.left);
+			right = Math.max(right, item.right);
+			bottom = Math.max(bottom, item.bottom);
+		}
+		return {
+			top: Number(top),
+			left: Number(left),
+			width: Number(right - left),
+			height: Number(bottom - top),
+		};
+	}
+
 	resolvePdfSelectionContext(selection, text) {
 		let range;
 		try {
@@ -887,6 +1503,10 @@ class PdfInlineTranslatePlugin extends Plugin {
 		};
 		if (Number.isFinite(pageNumber)) {
 			context.pageNumber = pageNumber;
+		}
+		const rect = this.extractRectFromRange(range);
+		if (rect) {
+			context.rect = rect;
 		}
 		return context;
 	}

@@ -19,6 +19,7 @@
 	white-space: pre-wrap;
 	line-height: 1.6;
 	font-size: 0.95rem;
+	font-family: var(--font-text), "Noto Sans JP", "Yu Gothic Medium", "Hiragino Sans", "Segoe UI", sans-serif;
 }
 
 .pdf-inline-translate__buttons {
@@ -50,4 +51,61 @@
 .pdf-inline-translate__translation {
 	flex: 1 1 auto;
 	overflow: auto;
+}
+
+.pdf-inline-translate__popup {
+	position: fixed;
+	top: 24px;
+	left: calc(100vw - 24px - min(420px, 100vw - 32px));
+	width: min(420px, calc(100vw - 32px));
+	max-height: min(80vh, calc(100vh - 32px));
+	display: none;
+	flex-direction: column;
+	padding: 1rem;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: var(--shadow-l);
+	border-radius: 0.75rem;
+	z-index: 1000;
+	gap: 0.75rem;
+}
+
+.pdf-inline-translate__popup.is-dragging {
+	cursor: grabbing;
+}
+
+.pdf-inline-translate__popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	cursor: grab;
+	user-select: none;
+}
+
+.pdf-inline-translate__popup-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.pdf-inline-translate__popup-close {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	font-size: 1.25rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+.pdf-inline-translate__popup-close:hover {
+	color: var(--text-normal);
+}
+
+.pdf-inline-translate__popup-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	overflow: hidden;
 }
