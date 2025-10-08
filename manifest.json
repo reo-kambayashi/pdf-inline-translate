@@ -1,9 +1,0 @@
-{
-  "id": "pdf-inline-translate",
-  "name": "PDF Inline Translate",
-  "version": "0.1.0",
-  "minAppVersion": "1.6.3",
-  "description": "PDF ビューア内で選択したテキストを Gemini で翻訳するツール。",
-  "author": "Reo Kambayashi",
-  "isDesktopOnly": false
-}
