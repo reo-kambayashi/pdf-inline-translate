@@ -1,0 +1,12 @@
+# Node.js dependencies
+node_modules/
+
+# Build artifacts
+dist/
+main.js.map
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
