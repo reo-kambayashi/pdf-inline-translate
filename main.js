@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PdfInlineTranslatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/lib/logger.ts
 var maskSecret = (value, visibleCount = 4) => {
@@ -210,6 +210,7 @@ var ja_default = {
   "notice.noSelection": "PDF \u5185\u3067\u30C6\u30AD\u30B9\u30C8\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
   "notice.translating": "Gemini \u3067\u7FFB\u8A33\u4E2D...",
   "notice.translationFailed": "\u7FFB\u8A33\u306B\u5931\u6557\u3057\u307E\u3057\u305F: {{message}}",
+  "notice.popupFallback": "\u7FFB\u8A33\u7D50\u679C\u306E\u30DD\u30C3\u30D7\u30A2\u30C3\u30D7\u4F4D\u7F6E\u3092\u53D6\u5F97\u3067\u304D\u306A\u304B\u3063\u305F\u305F\u3081\u3001\u30E2\u30FC\u30C0\u30EB\u3067\u8868\u793A\u3057\u307E\u3059\u3002",
   "command.translateSelection": "\u9078\u629E\u3057\u305F PDF \u30C6\u30AD\u30B9\u30C8\u3092\u7FFB\u8A33",
   "context.translateSelection": "\u9078\u629E\u7BC4\u56F2\u3092\u7FFB\u8A33 (Gemini)",
   "modal.originalTitle": "\u539F\u6587",
@@ -239,6 +240,7 @@ var en_default = {
   "notice.noSelection": "Select text inside the PDF viewer before translating.",
   "notice.translating": "Translating with Gemini...",
   "notice.translationFailed": "Translation failed: {{message}}",
+  "notice.popupFallback": "Could not determine a position for the popup, falling back to a modal.",
   "command.translateSelection": "Translate selected PDF text",
   "context.translateSelection": "Translate selection (Gemini)",
   "modal.originalTitle": "Original",
@@ -358,14 +360,135 @@ var TranslatableResultModal = class extends import_obsidian2.Modal {
   }
 };
 
+// src/ui/inlinePopup.ts
+var import_obsidian3 = require("obsidian");
+var TranslatableInlinePopup = class {
+  constructor(options) {
+    this.container = null;
+    this.cleanup = [];
+    this.options = options;
+  }
+  open() {
+    if (this.container) {
+      return;
+    }
+    const container = document.createElement("div");
+    container.className = "pdf-inline-translate-popup";
+    container.tabIndex = -1;
+    const header = document.createElement("div");
+    header.className = "pdf-inline-translate-popup__header";
+    const title = document.createElement("span");
+    title.className = "pdf-inline-translate-popup__title";
+    title.textContent = `${translate("modal.title", this.options.locale)} (${this.options.targetLanguage})`;
+    header.appendChild(title);
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "pdf-inline-translate-popup__close";
+    closeButton.setAttribute("aria-label", translate("modal.closeTooltip", this.options.locale));
+    closeButton.textContent = "X";
+    closeButton.addEventListener("click", () => this.close());
+    header.appendChild(closeButton);
+    const body = document.createElement("div");
+    body.className = "pdf-inline-translate-popup__body";
+    body.appendChild(this.createSection("modal.originalTitle", this.options.originalText));
+    body.appendChild(this.createSection("modal.translatedTitle", this.options.translatedText));
+    const actions = document.createElement("div");
+    actions.className = "pdf-inline-translate-popup__actions";
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "pdf-inline-translate-popup__button";
+    copyButton.textContent = translate("modal.copyButton", this.options.locale);
+    copyButton.addEventListener("click", () => {
+      void navigator.clipboard.writeText(this.options.translatedText);
+      new import_obsidian3.Notice(translate("modal.copyDone", this.options.locale));
+    });
+    actions.appendChild(copyButton);
+    container.appendChild(header);
+    container.appendChild(body);
+    container.appendChild(actions);
+    document.body.appendChild(container);
+    this.container = container;
+    this.bindEvents();
+    this.positionPopup();
+    requestAnimationFrame(() => this.positionPopup());
+  }
+  close() {
+    if (!this.container) {
+      return;
+    }
+    this.cleanup.forEach((dispose) => dispose());
+    this.cleanup = [];
+    this.container.remove();
+    this.container = null;
+    this.options.onClose?.();
+  }
+  createSection(labelKey, text) {
+    const section = document.createElement("div");
+    section.className = "pdf-inline-translate-section";
+    const heading = document.createElement("h3");
+    heading.textContent = translate(labelKey, this.options.locale);
+    section.appendChild(heading);
+    const paragraph = document.createElement("p");
+    paragraph.textContent = text;
+    section.appendChild(paragraph);
+    return section;
+  }
+  bindEvents() {
+    const handleOutsideClick = (event) => {
+      if (!this.container) {
+        return;
+      }
+      if (!this.container.contains(event.target)) {
+        this.close();
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick, true);
+    this.cleanup.push(() => document.removeEventListener("mousedown", handleOutsideClick, true));
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") {
+        this.close();
+      }
+    };
+    document.addEventListener("keydown", handleKeydown, true);
+    this.cleanup.push(() => document.removeEventListener("keydown", handleKeydown, true));
+    const handleScroll = () => this.close();
+    window.addEventListener("scroll", handleScroll, true);
+    this.cleanup.push(() => window.removeEventListener("scroll", handleScroll, true));
+    const handleResize = () => this.close();
+    window.addEventListener("resize", handleResize);
+    this.cleanup.push(() => window.removeEventListener("resize", handleResize));
+  }
+  positionPopup() {
+    if (!this.container) {
+      return;
+    }
+    const offset = 12;
+    const viewportPadding = 8;
+    const containerRect = this.container.getBoundingClientRect();
+    let left = this.options.position.left;
+    let top = this.options.position.bottom + offset;
+    const maxLeft = window.innerWidth - containerRect.width - viewportPadding;
+    left = Math.max(viewportPadding, Math.min(left, maxLeft));
+    if (top + containerRect.height + viewportPadding > window.innerHeight) {
+      top = this.options.position.top - containerRect.height - offset;
+    }
+    if (top < viewportPadding) {
+      top = Math.max(viewportPadding, Math.min(window.innerHeight - containerRect.height - viewportPadding, top));
+    }
+    this.container.style.left = `${left}px`;
+    this.container.style.top = `${top}px`;
+  }
+};
+
 // src/main.ts
-var PdfInlineTranslatePlugin = class extends import_obsidian3.Plugin {
+var PdfInlineTranslatePlugin = class extends import_obsidian4.Plugin {
   constructor() {
     super(...arguments);
     this.settings = structuredClone(DEFAULT_SETTINGS);
     this.geminiClient = null;
     this.logger = new ConsoleLogger("PdfInlineTranslate");
     this.locale = DEFAULT_LOCALE;
+    this.activePopup = null;
   }
   async onload() {
     await this.loadSettings();
@@ -376,6 +499,8 @@ var PdfInlineTranslatePlugin = class extends import_obsidian3.Plugin {
     this.logger.info(translate("logger.loaded", this.locale));
   }
   onunload() {
+    this.activePopup?.close();
+    this.activePopup = null;
     this.logger.info(translate("logger.unloaded", this.locale));
   }
   async loadSettings() {
@@ -417,34 +542,53 @@ var PdfInlineTranslatePlugin = class extends import_obsidian3.Plugin {
   }
   async translateSelection() {
     if (!this.settings.apiKey) {
-      new import_obsidian3.Notice(translate("notice.missingApiKey", this.locale));
+      new import_obsidian4.Notice(translate("notice.missingApiKey", this.locale));
       return;
     }
-    const selectedText = this.getSelectedText();
-    if (!selectedText) {
-      new import_obsidian3.Notice(translate("notice.noSelection", this.locale));
+    const snapshot = this.getSelectionSnapshot();
+    if (!snapshot) {
+      new import_obsidian4.Notice(translate("notice.noSelection", this.locale));
       return;
     }
-    const notice = new import_obsidian3.Notice(translate("notice.translating", this.locale), 0);
+    const notice = new import_obsidian4.Notice(translate("notice.translating", this.locale), 0);
+    this.clearActivePopup();
     try {
       const client = this.ensureClient();
       const result = await client.translate({
-        text: selectedText,
+        text: snapshot.text,
         targetLanguage: this.settings.targetLanguage,
         sourceLanguage: this.settings.sourceLanguage ?? void 0
       });
       notice.hide();
-      new TranslatableResultModal(this.app, {
-        originalText: selectedText,
-        translatedText: result.translatedText,
-        targetLanguage: this.settings.targetLanguage,
-        locale: this.locale
-      }).open();
+      if (snapshot.position) {
+        const popup = new TranslatableInlinePopup({
+          originalText: snapshot.text,
+          translatedText: result.translatedText,
+          targetLanguage: this.settings.targetLanguage,
+          locale: this.locale,
+          position: snapshot.position,
+          onClose: () => {
+            if (this.activePopup === popup) {
+              this.activePopup = null;
+            }
+          }
+        });
+        this.activePopup = popup;
+        popup.open();
+      } else {
+        new import_obsidian4.Notice(translate("notice.popupFallback", this.locale));
+        new TranslatableResultModal(this.app, {
+          originalText: snapshot.text,
+          translatedText: result.translatedText,
+          targetLanguage: this.settings.targetLanguage,
+          locale: this.locale
+        }).open();
+      }
     } catch (error) {
       notice.hide();
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error("\u7FFB\u8A33\u306B\u5931\u6557\u3057\u307E\u3057\u305F", { message });
-      new import_obsidian3.Notice(translate("notice.translationFailed", this.locale, { message }));
+      new import_obsidian4.Notice(translate("notice.translationFailed", this.locale, { message }));
     }
   }
   ensureClient() {
@@ -468,17 +612,58 @@ var PdfInlineTranslatePlugin = class extends import_obsidian3.Plugin {
     }
     return null;
   }
-  getSelectedText() {
+  getSelectionSnapshot() {
     const leaf = this.getActivePdfLeaf();
     if (!leaf) {
       return null;
     }
     const selection = window.getSelection();
     const text = selection?.toString() ?? "";
-    return text.trim() || null;
+    const trimmed = text.trim();
+    if (!selection || selection.rangeCount === 0 || !trimmed) {
+      return null;
+    }
+    const range = selection.getRangeAt(0).cloneRange();
+    const rect = this.normalizeRect(range);
+    return {
+      text: trimmed,
+      position: rect
+    };
   }
   hasValidPdfSelection() {
-    return Boolean(this.getSelectedText());
+    return Boolean(this.getSelectionSnapshot());
+  }
+  normalizeRect(range) {
+    const primaryRect = range.getBoundingClientRect();
+    const rect = this.pickVisibleRect(primaryRect, Array.from(range.getClientRects()));
+    if (!rect || rect.width === 0 && rect.height === 0) {
+      return null;
+    }
+    return {
+      top: rect.top,
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+  pickVisibleRect(firstRect, rects) {
+    if (firstRect.width > 0 && firstRect.height > 0) {
+      return firstRect;
+    }
+    for (const rect of rects) {
+      if (rect.width > 0 && rect.height > 0) {
+        return rect;
+      }
+    }
+    return null;
+  }
+  clearActivePopup() {
+    if (this.activePopup) {
+      this.activePopup.close();
+      this.activePopup = null;
+    }
   }
   getLocale() {
     return this.locale;

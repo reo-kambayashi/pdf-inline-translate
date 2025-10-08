@@ -3,6 +3,7 @@
   "notice.noSelection": "Select text inside the PDF viewer before translating.",
   "notice.translating": "Translating with Gemini...",
   "notice.translationFailed": "Translation failed: {{message}}",
+  "notice.popupFallback": "Could not determine a position for the popup, falling back to a modal.",
   "command.translateSelection": "Translate selected PDF text",
   "context.translateSelection": "Translate selection (Gemini)",
   "modal.originalTitle": "Original",

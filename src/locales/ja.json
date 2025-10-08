@@ -3,6 +3,7 @@
   "notice.noSelection": "PDF 内でテキストを選択してください。",
   "notice.translating": "Gemini で翻訳中...",
   "notice.translationFailed": "翻訳に失敗しました: {{message}}",
+  "notice.popupFallback": "翻訳結果のポップアップ位置を取得できなかったため、モーダルで表示します。",
   "command.translateSelection": "選択した PDF テキストを翻訳",
   "context.translateSelection": "選択範囲を翻訳 (Gemini)",
   "modal.originalTitle": "原文",

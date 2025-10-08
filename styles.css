@@ -1,3 +1,66 @@
+.pdf-inline-translate-popup {
+  position: fixed;
+  max-width: 360px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-s);
+  padding: var(--size-4-2);
+  z-index: var(--layer-popover);
+  color: var(--text-normal);
+}
+
+.pdf-inline-translate-popup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-1);
+  margin-bottom: var(--size-4-2);
+}
+
+.pdf-inline-translate-popup__title {
+  font-size: var(--font-small);
+  font-weight: 600;
+}
+
+.pdf-inline-translate-popup__close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-small);
+  padding: var(--size-2-1);
+  line-height: 1;
+}
+
+.pdf-inline-translate-popup__close:hover {
+  color: var(--text-normal);
+}
+
+.pdf-inline-translate-popup__body {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.pdf-inline-translate-popup__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--size-4-2);
+}
+
+.pdf-inline-translate-popup__button {
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--interactive-normal);
+  color: inherit;
+  border-radius: var(--radius-s);
+  padding: var(--size-2-2) var(--size-4-2);
+  cursor: pointer;
+}
+
+.pdf-inline-translate-popup__button:hover {
+  background-color: var(--interactive-hover);
+}
+
 .pdf-inline-translate-section {
   margin-bottom: var(--size-4-4);
   padding: var(--size-4-2);
