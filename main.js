@@ -36,6 +36,11 @@ class GeminiTranslationFloatingPopup {
 		this.onClose = null;
 		this.dragState = null;
 		this.lastPosition = null;
+		this.iconButton = null;
+		this.isExpanded = false;
+		this.currentState = null;
+		this.lastContext = null;
+		this.onExpandHandler = null;
 		this.boundOnKeydown = this.handleKeydown.bind(this);
 		this.boundOnDrag = this.onDrag.bind(this);
 		this.boundOnDragEnd = this.onDragEnd.bind(this);
@@ -45,46 +50,64 @@ class GeminiTranslationFloatingPopup {
 		this.onClose = handler;
 	}
 
+	setExpandHandler(handler) {
+		this.onExpandHandler = typeof handler === "function" ? handler : null;
+	}
+
 	showLoading(original, context) {
-		this.renderBase(original, context);
-		if (this.statusEl) {
-			this.statusEl.textContent = "Geminiに問い合わせ中…";
-		}
+		this.currentState = {
+			type: "loading",
+			original,
+			context,
+		};
 		this.translationText = "";
-		this.toggleCopyButton(false);
-		if (this.translationEl) {
-			this.translationEl.innerHTML = "";
+		if (this.isExpanded) {
+			this.renderExpandedState();
+		} else {
+			this.renderCollapsed(context);
 		}
 	}
 
 	showResult(original, translation, context) {
-		this.renderBase(original, context);
+		this.currentState = {
+			type: "result",
+			original,
+			context,
+			translation,
+		};
 		this.translationText = translation;
-		if (this.translationEl) {
-			this.translationEl.innerHTML = "";
-			const pre = document.createElement("pre");
-			pre.className = "pdf-inline-translate__translation-text";
-			pre.textContent = translation;
-			this.translationEl.appendChild(pre);
+		if (this.isExpanded) {
+			this.renderExpandedState();
+		} else {
+			this.renderCollapsed(context);
 		}
-		this.toggleCopyButton(true);
-		this.setPositionFromContext(context);
 	}
 
 	showCancelled(original, context) {
-		this.renderBase(original, context);
-		if (this.statusEl) {
-			this.statusEl.textContent = "翻訳を中断しました。";
+		this.currentState = {
+			type: "cancelled",
+			original,
+			context,
+		};
+		if (this.isExpanded) {
+			this.renderExpandedState();
+		} else {
+			this.renderCollapsed(context);
 		}
-		this.toggleCopyButton(false);
 	}
 
 	showError(original, context, message) {
-		this.renderBase(original, context);
-		if (this.statusEl) {
-			this.statusEl.textContent = message;
+		this.currentState = {
+			type: "error",
+			original,
+			context,
+			message,
+		};
+		if (this.isExpanded) {
+			this.renderExpandedState();
+		} else {
+			this.renderCollapsed(context);
 		}
-		this.toggleCopyButton(false);
 	}
 
 	hide() {
@@ -94,6 +117,11 @@ class GeminiTranslationFloatingPopup {
 		this.statusEl = null;
 		this.translationEl = null;
 		this.copyButton = null;
+		this.iconButton = null;
+		this.isExpanded = false;
+		this.currentState = null;
+		this.lastContext = null;
+		this.onExpandHandler = null;
 	}
 
 	destroy() {
@@ -105,6 +133,11 @@ class GeminiTranslationFloatingPopup {
 		this.statusEl = null;
 		this.translationEl = null;
 		this.copyButton = null;
+		this.iconButton = null;
+		this.isExpanded = false;
+		this.currentState = null;
+		this.lastContext = null;
+		this.onExpandHandler = null;
 	}
 
 	focus() {
@@ -121,9 +154,18 @@ class GeminiTranslationFloatingPopup {
 			return;
 		}
 
+		this.isExpanded = true;
+		this.iconButton = null;
+		container.classList.remove("pdf-inline-translate__popup--collapsed");
+		container.classList.add("pdf-inline-translate__popup--expanded");
 		container.style.display = "flex";
 		container.setAttribute("aria-hidden", "false");
+		container.setAttribute("role", "dialog");
+		container.setAttribute("aria-label", "Gemini翻訳");
 		container.innerHTML = "";
+		if (context && typeof context === "object" && Object.keys(context).length > 0) {
+			this.lastContext = context;
+		}
 
 		const header = document.createElement("div");
 		header.className = "pdf-inline-translate__popup-header";
@@ -186,6 +228,197 @@ class GeminiTranslationFloatingPopup {
 		this.addGlobalListener();
 		this.focus();
 		this.setPositionFromContext(context);
+	}
+
+	renderCollapsed(context) {
+		this.ensureContainer();
+		const container = this.container;
+		if (!container) {
+			return;
+		}
+
+		this.stopDragging();
+		this.removeGlobalListener();
+		this.isExpanded = false;
+		this.lastContext = context ?? this.lastContext;
+
+		container.style.display = "flex";
+		container.setAttribute("aria-hidden", "false");
+		container.setAttribute("role", "button");
+		container.setAttribute("aria-label", "Gemini翻訳を開く");
+		container.classList.add("pdf-inline-translate__popup--collapsed");
+		container.classList.remove("pdf-inline-translate__popup--expanded");
+		container.innerHTML = "";
+
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "pdf-inline-translate__collapsed-button";
+		button.setAttribute("aria-label", "Gemini翻訳を開く");
+		button.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.expandToFull();
+		});
+
+		const icon = document.createElement("span");
+		icon.className = "pdf-inline-translate__collapsed-icon";
+		const latin = document.createElement("span");
+		latin.className = "pdf-inline-translate__collapsed-icon-item";
+		latin.textContent = "A";
+		icon.appendChild(latin);
+		const kana = document.createElement("span");
+		kana.className =
+			"pdf-inline-translate__collapsed-icon-item pdf-inline-translate__collapsed-icon-item--kana";
+		kana.textContent = "あ";
+		icon.appendChild(kana);
+		button.appendChild(icon);
+
+		container.appendChild(button);
+		this.iconButton = button;
+		this.updateCollapsedVisuals();
+		this.setPositionFromContext(context);
+	}
+
+	prepareCollapsedState(original, context) {
+		this.currentState = {
+			type: "pending",
+			original,
+			context,
+		};
+		this.translationText = "";
+		this.renderCollapsed(context);
+	}
+
+	updateCollapsedVisuals() {
+		if (!this.container || !this.iconButton) {
+			return;
+		}
+		const state = this.currentState?.type ?? "idle";
+		this.container.dataset.popupState = state;
+		this.iconButton.dataset.state = state;
+		const tooltip = this.getCollapsedTooltip();
+		this.iconButton.title = tooltip;
+		this.iconButton.setAttribute("aria-label", tooltip);
+	}
+
+	getCollapsedTooltip() {
+		const state = this.currentState;
+		if (!state) {
+			return "Gemini翻訳";
+		}
+		switch (state.type) {
+			case "loading":
+				return "翻訳を準備しています…クリックで詳細を表示";
+			case "result":
+				return "翻訳が完了しました。クリックで結果を表示";
+			case "error":
+				return "翻訳に失敗しました。クリックで詳細を表示";
+			case "cancelled":
+				return "翻訳を中断しました。クリックで詳細を表示";
+			case "pending":
+				return "翻訳を開始するにはクリックしてください";
+			default:
+				return "Gemini翻訳";
+		}
+	}
+
+	hasPersistentState() {
+		return Boolean(this.currentState);
+	}
+
+	expandToFull() {
+		if (this.isExpanded) {
+			return;
+		}
+		this.renderExpandedState();
+		if (typeof this.onExpandHandler === "function") {
+			try {
+				this.onExpandHandler();
+			} catch (error) {
+				console.error("PDF Inline Translate: 展開時に例外が発生しました。", error);
+			}
+		}
+	}
+
+	renderExpandedState() {
+		const state = this.currentState;
+		const context = state?.context ?? this.lastContext ?? {};
+		const original = state?.original ?? "";
+		this.renderBase(original, context);
+
+		if (this.container) {
+			this.container.dataset.popupState = state?.type ?? "idle";
+		}
+
+		if (!state) {
+			if (this.statusEl) {
+				this.statusEl.textContent = "";
+			}
+			this.toggleCopyButton(false);
+			return;
+		}
+
+		switch (state.type) {
+			case "loading":
+				if (this.statusEl) {
+					this.statusEl.textContent = "Geminiに問い合わせ中…";
+				}
+				this.translationText = "";
+				this.toggleCopyButton(false);
+				if (this.translationEl) {
+					this.translationEl.innerHTML = "";
+				}
+				break;
+			case "pending":
+				if (this.statusEl) {
+					this.statusEl.textContent = "翻訳を開始するには「A あ」アイコンをクリックしてください。";
+				}
+				this.translationText = "";
+				this.toggleCopyButton(false);
+				if (this.translationEl) {
+					this.translationEl.innerHTML = "";
+				}
+				break;
+			case "result":
+				this.translationText = state.translation ?? "";
+				if (this.translationEl) {
+					this.translationEl.innerHTML = "";
+					if (this.translationText) {
+						const pre = document.createElement("pre");
+						pre.className = "pdf-inline-translate__translation-text";
+						pre.textContent = this.translationText;
+						this.translationEl.appendChild(pre);
+					}
+				}
+				if (this.statusEl) {
+					this.statusEl.textContent = "";
+				}
+				this.toggleCopyButton(Boolean(this.translationText));
+				break;
+			case "cancelled":
+				if (this.statusEl) {
+					this.statusEl.textContent = "翻訳を中断しました。";
+				}
+				this.translationText = "";
+				this.toggleCopyButton(false);
+				if (this.translationEl) {
+					this.translationEl.innerHTML = "";
+				}
+				break;
+			case "error":
+				if (this.statusEl) {
+					this.statusEl.textContent =
+						state.message ?? "翻訳に失敗しました。詳細はコンソールをご確認ください。";
+				}
+				this.translationText = "";
+				this.toggleCopyButton(false);
+				if (this.translationEl) {
+					this.translationEl.innerHTML = "";
+				}
+				break;
+			default:
+				break;
+		}
 	}
 
 	ensureContainer() {
@@ -279,6 +512,9 @@ class GeminiTranslationFloatingPopup {
 
 	setPositionFromContext(context) {
 		if (!this.container) return;
+		if (context && typeof context === "object" && Object.keys(context).length > 0) {
+			this.lastContext = context;
+		}
 		const rect =
 			context?.rect && this.isValidRect(context.rect)
 				? context.rect
@@ -595,7 +831,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 		void this.openTranslationInPopup(selectionText, preparedContext);
 	}
 
-	async openTranslationInPopup(selectionText, context) {
+	openTranslationInPopup(selectionText, context) {
 		let popup;
 		try {
 			popup = this.getOrCreateFloatingPopup();
@@ -612,7 +848,29 @@ class PdfInlineTranslatePlugin extends Plugin {
 			return;
 		}
 
+		if (this.popupAbortController) {
+			try {
+				this.popupAbortController.abort();
+			} catch (error) {
+				console.error(error);
+			}
+			this.popupAbortController = null;
+		}
+
 		const safeContext = context ?? {};
+		popup.setExpandHandler(() => {
+			if (this.popupAbortController) {
+				return;
+			}
+			void this.executeTranslationRequest(popup, selectionText, safeContext);
+		});
+		popup.prepareCollapsedState(selectionText, safeContext);
+		popup.focus();
+	}
+
+	async executeTranslationRequest(popup, selectionText, context) {
+		const safeContext = context ?? {};
+		popup.setExpandHandler(null);
 		popup.showLoading(selectionText, safeContext);
 		popup.focus();
 
@@ -623,6 +881,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 				console.error(error);
 			}
 		}
+
 		const abortController = new AbortController();
 		this.popupAbortController = abortController;
 
@@ -732,6 +991,9 @@ class PdfInlineTranslatePlugin extends Plugin {
 		const context = text ? this.resolvePdfSelectionContext(selection, text) : null;
 
 		if (!text || !context) {
+			if (this.floatingPopup?.hasPersistentState()) {
+				return;
+			}
 			this.closeFloatingPopup();
 			if (this.manuallyClosedSelectionKey) {
 				this.manuallyClosedSelectionKey = null;

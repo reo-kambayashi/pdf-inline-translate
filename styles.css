@@ -117,3 +117,111 @@
 	overflow: auto;
 	min-height: 0;
 }
+
+.pdf-inline-translate__popup--collapsed {
+	width: auto;
+	max-height: none;
+	padding: 0;
+	border: none;
+	box-shadow: none;
+	gap: 0;
+	background: transparent;
+}
+
+.theme-light .pdf-inline-translate__popup--collapsed,
+.theme-dark .pdf-inline-translate__popup--collapsed {
+	background: transparent;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+}
+
+.pdf-inline-translate__collapsed-button {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	border-radius: 999px;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	box-shadow: var(--shadow-l, 0 4px 14px rgba(0, 0, 0, 0.18));
+	color: #fff;
+	font-weight: 600;
+	background: var(--interactive-accent);
+	transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+
+.pdf-inline-translate__collapsed-button:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-xl, 0 6px 20px rgba(0, 0, 0, 0.2));
+}
+
+.pdf-inline-translate__collapsed-button:active {
+	transform: scale(0.96);
+}
+
+.pdf-inline-translate__collapsed-button[data-state="result"] {
+	background: var(--color-green, #2ecc71);
+}
+
+.pdf-inline-translate__collapsed-button[data-state="error"] {
+	background: var(--color-red, #e74c3c);
+}
+
+.pdf-inline-translate__collapsed-button[data-state="cancelled"] {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.pdf-inline-translate__collapsed-button::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	border: 2px solid transparent;
+	box-sizing: border-box;
+}
+
+.pdf-inline-translate__collapsed-button[data-state="loading"]::after {
+	border-top-color: rgba(255, 255, 255, 0.85);
+	border-right-color: rgba(255, 255, 255, 0.45);
+	border-bottom-color: rgba(255, 255, 255, 0.25);
+	border-left-color: rgba(255, 255, 255, 0.45);
+	animation: pdf-inline-translate__spin 0.85s linear infinite;
+}
+
+.pdf-inline-translate__collapsed-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.15rem;
+}
+
+.pdf-inline-translate__collapsed-icon-item {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.pdf-inline-translate__collapsed-icon-item--kana {
+	font-family: var(--font-text), "Noto Sans JP", "Yu Gothic Medium", "Hiragino Sans", "Segoe UI", sans-serif;
+	font-size: 1.05rem;
+}
+
+.pdf-inline-translate__collapsed-button[data-state="cancelled"] .pdf-inline-translate__collapsed-icon-item {
+	opacity: 0.75;
+}
+
+.pdf-inline-translate__collapsed-button[data-state="loading"] .pdf-inline-translate__collapsed-icon-item {
+	opacity: 0.9;
+}
+
+@keyframes pdf-inline-translate__spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
