@@ -1,3 +1,7 @@
+/* ==========================================================================
+   汎用スタイル & パネルUI
+   ========================================================================== */
+
 .pdf-inline-translate__section {
 	margin-bottom: 0.5rem;
 	font-size: 0.8rem;
@@ -25,6 +29,7 @@
 	margin-top: 0.5rem;
 }
 
+/* サイドパネル表示用のスタイル（現在は未使用） */
 .pdf-inline-translate__panel-view {
 	display: flex;
 	flex-direction: column;
@@ -49,12 +54,17 @@
 	overflow: auto;
 }
 
+/* ==========================================================================
+   フローティング・ポップアップ
+   ========================================================================== */
+
+/* --- コンテナ基本スタイル --- */
 .pdf-inline-translate__popup {
 	position: fixed;
-	/* top/left are set by JS */
+	/* top/left はJSで動的に設定 */
 	width: min(500px, calc(100vw - 32px));
 	max-height: min(80vh, calc(100vh - 32px));
-	display: none;
+	display: none; /* 通常は非表示 */
 	flex-direction: column;
 	padding: 0.25rem;
 	border: 1px solid var(--background-modifier-border);
@@ -64,6 +74,7 @@
 	gap: 0.25rem;
 }
 
+/* --- テーマ別の背景設定 (すりガラス効果) --- */
 .theme-light .pdf-inline-translate__popup {
     background-color: rgba(242, 242, 242, var(--popup-background-alpha, 0.95));
     backdrop-filter: blur(8px);
@@ -80,6 +91,7 @@
 	cursor: grabbing;
 }
 
+/* --- ポップアップヘッダー --- */
 .pdf-inline-translate__popup-header {
 	display: flex;
 	align-items: center;
@@ -110,6 +122,7 @@
 	color: var(--text-normal);
 }
 
+/* --- ポップアップボディ --- */
 .pdf-inline-translate__popup-body {
 	display: flex;
 	flex-direction: column;
@@ -118,6 +131,11 @@
 	min-height: 0;
 }
 
+/* ==========================================================================
+   折りたたみ時のフローティングアイコン
+   ========================================================================== */
+
+/* --- コンテナ --- */
 .pdf-inline-translate__popup--collapsed {
 	width: auto;
 	max-height: none;
@@ -125,16 +143,13 @@
 	border: none;
 	box-shadow: none;
 	gap: 0;
-	background: transparent;
+	/* すりガラス効果を解除 */
+	background: transparent !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
 }
 
-.theme-light .pdf-inline-translate__popup--collapsed,
-.theme-dark .pdf-inline-translate__popup--collapsed {
-	background: transparent;
-	backdrop-filter: none;
-	-webkit-backdrop-filter: none;
-}
-
+/* --- アイコンボタン --- */
 .pdf-inline-translate__collapsed-button {
 	position: relative;
 	display: flex;
@@ -147,9 +162,7 @@
 	padding: 0;
 	cursor: pointer;
 	box-shadow: var(--shadow-l, 0 4px 14px rgba(0, 0, 0, 0.18));
-	color: #fff;
-	font-weight: 600;
-	background: var(--interactive-accent);
+	background: #ffffff;
 	transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
@@ -162,6 +175,7 @@
 	transform: scale(0.96);
 }
 
+/* --- 状態別の色分け --- */
 .pdf-inline-translate__collapsed-button[data-state="result"] {
 	background: var(--color-green, #2ecc71);
 }
@@ -175,6 +189,7 @@
 	color: var(--text-muted);
 }
 
+/* --- ローディングアニメーション --- */
 .pdf-inline-translate__collapsed-button::after {
 	content: "";
 	position: absolute;
@@ -192,31 +207,6 @@
 	animation: pdf-inline-translate__spin 0.85s linear infinite;
 }
 
-.pdf-inline-translate__collapsed-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 0.15rem;
-}
-
-.pdf-inline-translate__collapsed-icon-item {
-	font-size: 1rem;
-	line-height: 1;
-}
-
-.pdf-inline-translate__collapsed-icon-item--kana {
-	font-family: var(--font-text), "Noto Sans JP", "Yu Gothic Medium", "Hiragino Sans", "Segoe UI", sans-serif;
-	font-size: 1.05rem;
-}
-
-.pdf-inline-translate__collapsed-button[data-state="cancelled"] .pdf-inline-translate__collapsed-icon-item {
-	opacity: 0.75;
-}
-
-.pdf-inline-translate__collapsed-button[data-state="loading"] .pdf-inline-translate__collapsed-icon-item {
-	opacity: 0.9;
-}
-
 @keyframes pdf-inline-translate__spin {
 	from {
 		transform: rotate(0deg);
@@ -225,3 +215,37 @@
 		transform: rotate(360deg);
 	}
 }
+
+/* --- アイコン本体 --- */
+.pdf-inline-translate__collapsed-icon {
+	width: 60%;
+	height: 60%;
+	display: inline-block;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+.pdf-inline-translate__collapsed-icon--fallback {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	font-size: 0.95rem;
+	font-weight: 600;
+	background: none;
+	filter: none;
+	color: var(--text-muted);
+	letter-spacing: 0.05em;
+}
+
+.pdf-inline-translate__collapsed-button[data-state="cancelled"] .pdf-inline-translate__collapsed-icon {
+	opacity: 0.65;
+}
+
+.pdf-inline-translate__collapsed-button[data-state="loading"] .pdf-inline-translate__collapsed-icon {
+	opacity: 0.85;
+}
+
