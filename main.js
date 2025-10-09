@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
 	promptTemplate:
 		"以下の原文は学術論文からの抜粋です。構造と意味を忠実に保ちつつ{{targetLanguage}}へ翻訳してください。語調は論文調を意識し、補足説明や注釈、要約は一切追加しないでください。翻訳結果のみを出力してください。\n\n--- 原文 ---\n{{text}}\n",
 	timeoutMs: 20000,
+	popupBackgroundColorAlpha: 0.8,
 };
 
 const AUTO_TRANSLATE_DEBOUNCE_MS = 350;
@@ -66,10 +67,8 @@ class GeminiTranslationFloatingPopup {
 			pre.textContent = translation;
 			this.translationEl.appendChild(pre);
 		}
-		if (this.statusEl) {
-			this.statusEl.textContent = "翻訳完了";
-		}
 		this.toggleCopyButton(true);
+		this.setPositionFromContext(context);
 	}
 
 	showCancelled(original, context) {
@@ -147,17 +146,7 @@ class GeminiTranslationFloatingPopup {
 		body.className = "pdf-inline-translate__popup-body";
 		container.appendChild(body);
 
-		const originalDetails = document.createElement("details");
-		originalDetails.className = "pdf-inline-translate__original";
-		body.appendChild(originalDetails);
 
-		const summary = document.createElement("summary");
-		summary.textContent = "原文を表示";
-		originalDetails.appendChild(summary);
-
-		const pre = document.createElement("pre");
-		pre.textContent = original;
-		originalDetails.appendChild(pre);
 
 		this.statusEl = document.createElement("p");
 		this.statusEl.className = "pdf-inline-translate__status";
@@ -478,6 +467,21 @@ class PdfInlineTranslateSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		new Setting(containerEl)
+			.setName("ポップアップ背景の不透明度")
+			.setDesc("値が小さいほど透明になります。")
+			.addSlider((slider) =>
+				slider
+					.setLimits(0, 1, 0.05)
+					.setDynamicTooltip()
+					.setValue(this.plugin.settings.popupBackgroundColorAlpha)
+					.onChange(async (value) => {
+						this.plugin.settings.popupBackgroundColorAlpha = value;
+						this.plugin.updatePopupBackgroundColorAlpha();
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }
 
@@ -485,6 +489,7 @@ class PdfInlineTranslatePlugin extends Plugin {
 	async onload() {
 		console.info("PDF Inline Translate (Gemini) ロード開始");
 		await this.loadSettings();
+		this.updatePopupBackgroundColorAlpha();
 
 		this.autoTranslateTimer = null;
 		this.lastAutoTranslateKey = null;
@@ -565,6 +570,13 @@ class PdfInlineTranslatePlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	updatePopupBackgroundColorAlpha() {
+		document.body.style.setProperty(
+			"--popup-background-alpha",
+			this.settings.popupBackgroundColorAlpha,
+		);
 	}
 
 	openTranslation(selectionText, context) {
