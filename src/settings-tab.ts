@@ -53,42 +53,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
-			.setName("システム指示")
-			.setDesc("モデルへ与える前提指示。翻訳の方針を細かく制御したい場合に調整してください。")
-			.addTextArea((area) =>
-				area
-					.setValue(this.plugin.settings.systemInstruction)
-					.setPlaceholder("翻訳スタイルなどを指示します。")
-					.onChange(async (value) => {
-						this.plugin.settings.systemInstruction = value;
-						await this.plugin.saveSettings();
-					}),
-			);
 
-		new Setting(containerEl)
-			.setName("プロンプトテンプレート")
-			.setDesc("{{text}}, {{targetLanguage}}, {{page}} を使って翻訳プロンプトをカスタマイズできます。")
-			.addTextArea((area) =>
-				area
-					.setValue(this.plugin.settings.promptTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.promptTemplate = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("辞書用プロンプトテンプレート")
-			.setDesc("単語や熟語の翻訳（辞書的検索）時に使用するプロンプトです。")
-			.addTextArea((area) =>
-				area
-					.setValue(this.plugin.settings.dictionaryPromptTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.dictionaryPromptTemplate = value;
-						await this.plugin.saveSettings();
-					}),
-			);
 
 
 		new Setting(containerEl)

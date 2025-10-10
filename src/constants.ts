@@ -6,12 +6,6 @@ export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
 	targetLanguage: "日本語",
 	temperature: 0.1,
 	maxOutputTokens: 1024,
-	systemInstruction:
-		"あなたは学術論文翻訳の専門家です。原文の論旨と語気を保ちつつ、自然で読みやすい日本語へ翻訳してください。用語の補足説明や注釈は追加しないでください。",
-	promptTemplate:
-		"以下の原文は学術論文からの抜粋です。構造と意味を忠実に保ちつつ{{targetLanguage}}へ翻訳してください。語調は論文調を意識し、補足説明や注釈、要約は一切追加しないでください。翻訳結果のみを出力してください。\n\n--- 原文 ---\n{{text}}\n",
-	dictionaryPromptTemplate:
-		"次の単語または熟語を辞書形式で解説してください。品詞、意味、発音記号、例文を、翻訳先の言語（{{targetLanguage}}）で記述してください。マークダウン形式で、見やすく整形してください。\n\n--- 原文 ---\n{{text}}\n",
 	popupBackgroundColorAlpha: 0.8,
 };
 

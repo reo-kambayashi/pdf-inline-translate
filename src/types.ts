@@ -4,8 +4,5 @@ export interface PdfInlineTranslatePluginSettings {
   targetLanguage: string;
   temperature: number;
   maxOutputTokens: number;
-  systemInstruction: string;
-  promptTemplate: string;
-  dictionaryPromptTemplate: string;
   popupBackgroundColorAlpha: number;
 }

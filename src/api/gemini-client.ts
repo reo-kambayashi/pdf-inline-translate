@@ -4,6 +4,13 @@ import { PdfInlineTranslatePluginSettings } from "../types";
 const GEMINI_API_BASE =
 	"https://generativelanguage.googleapis.com/v1beta/models";
 
+const SYSTEM_INSTRUCTION =
+	"あなたはプロの学術翻訳者です。与えられた原文を、その分野の専門家が読むことを想定し、専門用語やニュアンスを正確に反映した、自然で格調高い日本語の学術論文スタイル（だ・である調）で翻訳してください。追加の説明、解釈、脚注は一切含めず、翻訳文のみを厳密に出力してください。";
+const PROMPT_TEMPLATE =
+	"以下の学術論文の抜粋を、{{targetLanguage}}に翻訳してください。原文の専門用語と論理構造を忠実に維持し、学術的な文体で記述してください。翻訳結果のみを出力してください。\n\n--- 原文 ---\n{{text}}\n";
+const DICTIONARY_PROMPT_TEMPLATE =
+	"以下の単語または熟語について、指定の形式で解説を作成してください。\n\n**言語:** {{targetLanguage}}\n**出力形式:** マークダウン\n\n--- 指示 ---\n1. **品詞:** 単語の品詞を記述してください。\n2. **意味:** 主な意味を簡潔に説明してください。\n3. **発音記号:** IPA（国際音声記号）で発音を記述してください。\n4. **例文:** その単語が自然に使われている例文を1つ作成し、その日本語訳も併記してください。\n\n--- 単語 ---\n{{text}}\n";
+
 export class GeminiClient {
 	constructor(private settings: PdfInlineTranslatePluginSettings) {}
 
@@ -18,20 +25,17 @@ export class GeminiClient {
 				{
 					role: "user",
 					parts: [{ text: prompt }],
-				},
+				}
 			],
 			generationConfig: {
 				temperature: this.settings.temperature,
 				maxOutputTokens: this.settings.maxOutputTokens,
 			},
-		};
-
-		if (this.settings.systemInstruction?.trim()) {
-			body.systemInstruction = {
+			systemInstruction: {
 				role: "system",
-				parts: [{ text: this.settings.systemInstruction }],
-			};
-		}
+				parts: [{ text: SYSTEM_INSTRUCTION }],
+			},
+		};
 
 		const url = `${GEMINI_API_BASE}/${encodeURIComponent(
 			this.settings.model,
@@ -100,8 +104,8 @@ export class GeminiClient {
 
 		const template =
 			isDictionaryQuery
-				? this.settings.dictionaryPromptTemplate
-				: this.settings.promptTemplate;
+				? DICTIONARY_PROMPT_TEMPLATE
+				: PROMPT_TEMPLATE;
 
 		return template
 			.replaceAll("{{text}}", text)

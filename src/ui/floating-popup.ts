@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { Notice, MarkdownRenderer } from "obsidian";
 import PdfInlineTranslatePlugin from "../main";
 
 export class GeminiTranslationFloatingPopup {
@@ -391,10 +391,13 @@ export class GeminiTranslationFloatingPopup {
 				if (this.translationEl) {
 					this.translationEl.innerHTML = "";
 					if (this.translationText) {
-						const pre = document.createElement("pre");
-						pre.className = "pdf-inline-translate__translation-text";
-						pre.textContent = this.translationText;
-						this.translationEl.appendChild(pre);
+						void MarkdownRenderer.render(
+							this.plugin.app,
+							this.translationText,
+							this.translationEl,
+							"",
+							this.plugin,
+						);
 					}
 				}
 				if (this.statusEl) {
