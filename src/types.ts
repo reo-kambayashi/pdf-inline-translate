@@ -6,5 +6,6 @@ export interface PdfInlineTranslatePluginSettings {
   maxOutputTokens: number;
   systemInstruction: string;
   promptTemplate: string;
+  dictionaryPromptTemplate: string;
   popupBackgroundColorAlpha: number;
 }

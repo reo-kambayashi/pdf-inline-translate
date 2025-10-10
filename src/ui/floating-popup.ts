@@ -40,14 +40,18 @@ export class GeminiTranslationFloatingPopup {
 		this.onExpandHandler = typeof handler === "function" ? handler : null;
 	}
 
-	showLoading(original: string, context: any) {
+	showLoading(
+		original: string,
+		context: any,
+		forceExpand: boolean = false,
+	) {
 		this.currentState = {
 			type: "loading",
 			original,
 			context,
 		};
 		this.translationText = "";
-		if (this.isExpanded) {
+		if (this.isExpanded || forceExpand) {
 			this.renderExpandedState();
 		} else {
 			this.renderCollapsed(context);
@@ -98,6 +102,7 @@ export class GeminiTranslationFloatingPopup {
 
 	hide() {
 		if (!this.container) return;
+		this.removeGlobalListener();
 		this.container.style.display = "none";
 		this.container.setAttribute("aria-hidden", "true");
 		this.statusEl = null;
@@ -277,6 +282,7 @@ export class GeminiTranslationFloatingPopup {
 		this.iconButton = button;
 		this.updateCollapsedVisuals();
 		this.setPositionFromContext(context);
+		this.addGlobalListener();
 	}
 
 	prepareCollapsedState(original: string, context: any) {
@@ -330,7 +336,6 @@ export class GeminiTranslationFloatingPopup {
 		if (this.isExpanded) {
 			return;
 		}
-		this.renderExpandedState();
 		if (typeof this.onExpandHandler === "function") {
 			try {
 				this.onExpandHandler();
@@ -338,6 +343,7 @@ export class GeminiTranslationFloatingPopup {
 				console.error("PDF Inline Translate: 展開時に例外が発生しました。", error);
 			}
 		}
+		this.renderExpandedState();
 	}
 
 	renderExpandedState() {
@@ -438,11 +444,9 @@ export class GeminiTranslationFloatingPopup {
 	}
 
 	handleClose() {
-		this.hide();
 		if (typeof this.onClose === "function") {
 			this.onClose();
 		}
-		this.removeGlobalListener();
 	}
 
 	handleKeydown(event: KeyboardEvent) {
@@ -585,5 +589,15 @@ export class GeminiTranslationFloatingPopup {
 
 	removeGlobalListener() {
 		document.removeEventListener("keydown", this.boundOnKeydown);
+	}
+
+	containsElement(target: EventTarget | null): boolean {
+		if (!this.container || !target) {
+			return false;
+		}
+		if (!(target instanceof Node)) {
+			return false;
+		}
+		return this.container.contains(target);
 	}
 }

@@ -79,6 +79,19 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("辞書用プロンプトテンプレート")
+			.setDesc("単語や熟語の翻訳（辞書的検索）時に使用するプロンプトです。")
+			.addTextArea((area) =>
+				area
+					.setValue(this.plugin.settings.dictionaryPromptTemplate)
+					.onChange(async (value) => {
+						this.plugin.settings.dictionaryPromptTemplate = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+
+		new Setting(containerEl)
 			.setName("温度")
 			.setDesc("0に近いほど直訳寄り、値を上げると意訳が増えます。")
 			.addSlider((slider) =>
