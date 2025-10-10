@@ -75,17 +75,41 @@
 }
 
 /* --- テーマ別の背景設定 (すりガラス効果) --- */
-.theme-light .pdf-inline-translate__popup {
-    background-color: rgba(242, 242, 242, var(--popup-background-alpha, 0.95));
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+.pdf-inline-translate__popup[data-popup-state="pending"],
+.pdf-inline-translate__popup[data-popup-state="idle"] {
+	background-color: rgba(255, 255, 255, var(--popup-background-alpha, 0.95));
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
 }
 
-.theme-dark .pdf-inline-translate__popup {
-    background-color: rgba(30, 30, 30, var(--popup-background-alpha, 0.95));
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+.pdf-inline-translate__popup[data-popup-state="loading"],
+.pdf-inline-translate__popup[data-popup-state="result"],
+.pdf-inline-translate__popup[data-popup-state="error"],
+.pdf-inline-translate__popup[data-popup-state="cancelled"] {
+	background-color: rgba(0, 0, 0, var(--popup-background-alpha, 0.95));
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
 }
+
+/* 黒背景の時の文字色を調整 */
+.pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__status,
+.pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__status,
+.pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__status,
+.pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__status,
+.pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__translation-text,
+.pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__translation-text,
+.pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__translation-text,
+.pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__translation-text {
+	color: #ffffff;
+}
+
+.pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__popup-close,
+.pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__popup-close,
+.pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__popup-close,
+.pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__popup-close {
+	color: #ffffff;
+}
+
 
 .pdf-inline-translate__popup.is-dragging {
 	cursor: grabbing;
@@ -150,6 +174,11 @@
 }
 
 /* --- アイコンボタン --- */
+.pdf-inline-translate__collapsed-button[data-state="idle"],
+.pdf-inline-translate__collapsed-button[data-state="pending"] {
+	background: #ffffff;
+}
+
 .pdf-inline-translate__collapsed-button {
 	position: relative;
 	display: flex;
@@ -162,7 +191,7 @@
 	padding: 0;
 	cursor: pointer;
 	box-shadow: var(--shadow-l, 0 4px 14px rgba(0, 0, 0, 0.18));
-	background: #ffffff;
+	/* background: #ffffff; */ /* Replaced by state-specific rules */
 	transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
@@ -176,12 +205,18 @@
 }
 
 /* --- 状態別の色分け --- */
+.pdf-inline-translate__collapsed-button[data-state="loading"] {
+	background: var(--background-secondary);
+}
+
 .pdf-inline-translate__collapsed-button[data-state="result"] {
 	background: var(--color-green, #2ecc71);
+	color: #ffffff;
 }
 
 .pdf-inline-translate__collapsed-button[data-state="error"] {
 	background: var(--color-red, #e74c3c);
+	color: #ffffff;
 }
 
 .pdf-inline-translate__collapsed-button[data-state="cancelled"] {

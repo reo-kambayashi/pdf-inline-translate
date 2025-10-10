@@ -108,21 +108,6 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("タイムアウト (ms)")
-			.setDesc("Gemini APIの応答待ち時間をミリ秒で指定します。")
-			.addText((text) =>
-				text
-					.setValue(String(this.plugin.settings.timeoutMs))
-					.onChange(async (value) => {
-						const parsed = Number(value);
-						this.plugin.settings.timeoutMs = Number.isFinite(parsed)
-							? parsed
-							: DEFAULT_SETTINGS.timeoutMs;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
 			.setName("ポップアップ背景の不透明度")
 			.setDesc("値が小さいほど透明になります。")
 			.addSlider((slider) =>

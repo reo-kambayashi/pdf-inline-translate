@@ -161,7 +161,6 @@ export class GeminiTranslationFloatingPopup {
 
 		this.addGlobalListener();
 		this.focus();
-		this.setPositionFromContext(context);
 	}
 
 	_createHeader(): HTMLElement {
@@ -300,39 +299,6 @@ export class GeminiTranslationFloatingPopup {
 		const tooltip = this.getCollapsedTooltip();
 		this.iconButton.title = tooltip;
 		this.iconButton.setAttribute("aria-label", tooltip);
-		this.updateCollapsedButtonColors(state);
-	}
-
-	updateCollapsedButtonColors(state: string) {
-		if (!this.iconButton) {
-			return;
-		}
-		let backgroundColor = "#ffffff";
-		let textColor = "var(--text-normal)";
-		switch (state) {
-			case "result":
-				backgroundColor = "var(--color-green, #2ecc71)";
-				textColor = "#ffffff";
-				break;
-			case "error":
-				backgroundColor = "var(--color-red, #e74c3c)";
-				textColor = "#ffffff";
-				break;
-			case "cancelled":
-				backgroundColor = "var(--background-modifier-border)";
-				textColor = "var(--text-muted)";
-				break;
-			case "loading":
-				backgroundColor = "#ffffff";
-				textColor = "var(--text-normal)";
-				break;
-			default:
-				backgroundColor = "#ffffff";
-				textColor = "var(--text-normal)";
-				break;
-		}
-		this.iconButton.style.backgroundColor = backgroundColor;
-		this.iconButton.style.color = textColor;
 	}
 
 	getCollapsedTooltip(): string {
@@ -389,6 +355,7 @@ export class GeminiTranslationFloatingPopup {
 				this.statusEl.textContent = "";
 			}
 			this.toggleCopyButton(false);
+			this.setPositionFromContext(context);
 			return;
 		}
 
@@ -453,6 +420,7 @@ export class GeminiTranslationFloatingPopup {
 			default:
 				break;
 		}
+		this.setPositionFromContext(context);
 	}
 
 	ensureContainer() {

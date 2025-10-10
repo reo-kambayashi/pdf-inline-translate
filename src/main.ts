@@ -1,4 +1,4 @@
-import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
+import { Plugin, Notice } from 'obsidian';
 import { PdfInlineTranslatePluginSettings } from './types';
 import { DEFAULT_SETTINGS, GEMINI_API_BASE, AUTO_TRANSLATE_DEBOUNCE_MS, AUTO_TRANSLATE_REPEAT_THRESHOLD_MS } from './constants';
 import { PdfInlineTranslateSettingTab } from './settings-tab';
