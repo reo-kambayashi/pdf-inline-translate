@@ -39,7 +39,6 @@ The quick brown fox jumps over the lazy dog. This sentence contains all the lett
 - \u4F8B\u6587\u306B\u767B\u5834\u3059\u308B\u5BFE\u8C61\u8A9E\u53E5\u306F\u3001**\u592A\u5B57**\u3067\u5F37\u8ABF\u3059\u308B\u3053\u3068\u3002
 
 ### \u4F8B
-#### \u5BFE\u8C61\u8A9E\u53E5
 mitigate
 
 #### \u51FA\u529B
