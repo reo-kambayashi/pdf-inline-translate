@@ -56,6 +56,7 @@ mitigate
 1.  **品詞:** 動詞
     - **意味1:** （苦痛・厳しさなどを）和らげる、軽減する
       **例文:** They are trying to **mitigate** the effects of the crisis. / 彼らはその危機の効果を和らげようと試みている。
+
     - **意味2:** （刑罰などを）軽くする
       **例文:** The judge refused to **mitigate** the sentence. / 裁判官は刑の軽減を拒否した。
 
