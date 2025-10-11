@@ -19,7 +19,7 @@
 	white-space: pre-wrap;
 	line-height: 1.5;
 	font-size: 0.9rem;
-	font-family: var(--font-text), "Noto Sans JP", "Yu Gothic Medium", "Hiragino Sans", "Segoe UI", sans-serif;
+	font-family: "Hiragino Sans", "Meiryo", "Noto Sans JP", "Segoe UI", sans-serif;
 }
 
 .pdf-inline-translate__buttons {
