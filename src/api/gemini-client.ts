@@ -66,18 +66,52 @@ mitigate
 export class GeminiClient {
 	constructor(private settings: PdfInlineTranslatePluginSettings) {}
 
+	private async isDictionaryWord(
+		text: string,
+		abortSignal: AbortSignal,
+	): Promise<boolean> {
+		const word = text.trim();
+		// スペースを含む、または長すぎる文字列は辞書検索から除外
+		if (word.includes(" ") || word.length > 50) {
+			return false;
+		}
+
+		try {
+			const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(
+				word,
+			)}`;
+			const response = await fetch(url, {
+				method: "GET",
+				signal: abortSignal,
+			});
+			return response.ok;
+		} catch (error) {
+			if (error.name !== "AbortError") {
+				console.error(
+					"PDF Inline Translate: Dictionary API request failed",
+					error,
+				);
+			}
+			return false;
+		}
+	}
+
 	async requestTranslation(
 		text: string,
 		context: any,
 		abortSignal: AbortSignal,
 	): Promise<string> {
-		const prompt = this.buildPrompt(text, context);
+		const isDictionary = await this.isDictionaryWord(text, abortSignal);
+		const classification = isDictionary ? "dictionary" : "translation";
+
+		const prompt = this.buildPrompt(text, context, classification);
+
 		const body: any = {
 			contents: [
 				{
 					role: "user",
 					parts: [{ text: prompt }],
-				}
+				},
 			],
 			generationConfig: {
 				temperature: this.settings.temperature,
@@ -148,14 +182,13 @@ export class GeminiClient {
 		return detail;
 	}
 
-	private buildPrompt(text: string, context: any): string {
-		const trimmedText = text.trim();
-		const wordCount = trimmedText.split(/\s+/).length;
-
-		const isDictionaryQuery = wordCount <= 3 && trimmedText.length <= 50;
-
+	private buildPrompt(
+		text: string,
+		context: any,
+		classification: string,
+	): string {
 		const template =
-			isDictionaryQuery
+			classification === "dictionary"
 				? DICTIONARY_PROMPT_TEMPLATE
 				: PROMPT_TEMPLATE;
 
