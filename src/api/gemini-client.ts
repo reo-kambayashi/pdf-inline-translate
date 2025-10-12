@@ -2,14 +2,19 @@ import { Notice } from "obsidian";
 import { 
   PdfInlineTranslatePluginSettings, 
   TranslationContext,
-  GeminiApiResponse
+  GeminiApiResponse,
+  TranslationHistoryItem
 } from "../types";
 import { 
   ERROR_MESSAGES 
 } from "../constants";
+import { TranslationHistoryManager } from "../translation-history-manager";
 
 export class GeminiClient {
-  constructor(private settings: PdfInlineTranslatePluginSettings) {}
+  constructor(
+    private settings: PdfInlineTranslatePluginSettings,
+    private historyManager?: TranslationHistoryManager
+  ) {}
 
 	private async isDictionaryWord(
     text: string,
@@ -40,18 +45,22 @@ export class GeminiClient {
       
       // Check if the request was aborted during fetch
       if (abortSignal.aborted) {
-        return false;
+        throw new Error("Dictionary lookup was cancelled");
       }
       
       return response.ok;
     } catch (error) {
-      if (error.name !== "AbortError") {
+      if (error.name === "AbortError") {
+        console.debug("PDF Inline Translate: Dictionary lookup was cancelled", error);
+        throw new Error("Dictionary lookup was cancelled");
+      } else {
         console.error(
           "PDF Inline Translate: Dictionary API request failed",
           error,
         );
+        // Don't throw the error for dictionary lookup failures, just return false
+        return false;
       }
-      return false;
     }
   }
 
@@ -76,13 +85,32 @@ export class GeminiClient {
       throw new Error(ERROR_MESSAGES.NO_MODEL);
     }
 
+    // Check for cached translation first
+    if (this.historyManager) {
+      const cachedResult = this.historyManager.findCachedTranslation(text, this.settings.targetLanguage);
+      if (cachedResult) {
+        console.debug("Using cached translation for:", text.substring(0, 50) + "...");
+        return cachedResult.translation;
+      }
+    }
+
     // Add timeout support if configured
     const timeoutMs = this.settings.timeoutMs || 30000; // Default to 30 seconds
     const timeoutAbortController = new AbortController();
     const timeoutId = setTimeout(() => timeoutAbortController.abort(), timeoutMs);
 
     try {
-      const isDictionary = await this.isDictionaryWord(text, abortSignal);
+      const isDictionaryPromise = this.isDictionaryWord(text, abortSignal);
+      let isDictionary = false;
+      
+      try {
+        isDictionary = await isDictionaryPromise;
+      } catch (dictError) {
+        // If dictionary lookup fails, continue with translation anyway
+        console.debug("Dictionary lookup failed, proceeding with translation:", dictError);
+        isDictionary = false;
+      }
+
       const classification = isDictionary ? "dictionary" : "translation";
 
       const prompt = this.buildPrompt(text, context, classification);
@@ -111,13 +139,22 @@ export class GeminiClient {
         signal: combinedSignal,
       });
 
-      if (abortSignal.aborted) {
+      if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
         throw new Error(ERROR_MESSAGES.CANCELLED);
       }
 
       if (!response.ok) {
         const errorDetail = await this.getApiErrorDetail(response);
-        throw new Error(errorDetail);
+        const errorMessage = `Gemini API error: ${errorDetail}`;
+        
+        // Check if it's a quota or authorization issue and notify user appropriately
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+          throw new Error(`${errorMessage} - Please check your API key and quota.`);
+        } else if (response.status === 429) {
+          throw new Error(`${errorMessage} - Rate limit exceeded. Please try again later.`);
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       const responseData: GeminiApiResponse = await this.parseResponse(response);
@@ -128,12 +165,33 @@ export class GeminiClient {
       }
 
       if (responseData?.promptFeedback?.blockReason) {
-        new Notice(
-          `Geminiが出力をブロックしました: ${String(responseData.promptFeedback.blockReason)}`,
+        const blockReason = String(responseData.promptFeedback.blockReason);
+        new Notice(`Geminiが出力をブロックしました: ${blockReason}`);
+        // Still return the translation even if blocked for safety reasons
+      }
+
+      // Add the new translation to history
+      if (this.historyManager) {
+        this.historyManager.addToHistory(
+          text,
+          translation,
+          this.settings.targetLanguage,
+          undefined, // source language would need to be detected
+          this.settings.model,
+          isDictionary
         );
       }
 
       return translation;
+    } catch (error) {
+      // Handle AbortError specifically
+      if (error.name === "AbortError" || error.message.includes("cancelled")) {
+        console.debug("Translation request was cancelled");
+        throw new Error(ERROR_MESSAGES.CANCELLED);
+      }
+      
+      // Re-throw the original error
+      throw error;
     } finally {
       clearTimeout(timeoutId);
       if (!timeoutAbortController.signal.aborted) {

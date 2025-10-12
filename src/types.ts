@@ -13,6 +13,26 @@ export interface PdfInlineTranslatePluginSettings {
   autoInsertToNote?: boolean;
   insertionTemplate?: string;
   timeoutMs?: number;
+  // Translation history options
+  enableTranslationHistory: boolean;
+  maxHistoryItems: number;
+  // Multi-provider options
+  translationProvider: 'gemini' | 'openai' | 'anthropic';
+  openAIApiKey?: string;
+  openAIModel?: string;
+  anthropicApiKey?: string;
+  anthropicModel?: string;
+  // UI customization options
+  popupWidth: number;
+  popupHeight: number;
+  popupPosition: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
+  popupTheme: 'default' | 'dark' | 'light' | 'blue' | 'green';
+  fontSize: 'small' | 'medium' | 'large';
+  showOriginalText: boolean;
+  autoExpandPopup: boolean;
+  // Language detection options
+  enableLanguageDetection: boolean;
+  sourceLanguage: string; // Default source language when detection is disabled
 }
 
 export interface TranslationContext {
@@ -116,4 +136,20 @@ export interface PopupState {
   originalText: string;
   translationText: string;
   isOriginalVisible: boolean;
+}
+
+// Translation history interface
+export interface TranslationHistoryItem {
+  id: string;
+  original: string;
+  translation: string;
+  sourceLanguage?: string;
+  targetLanguage: string;
+  timestamp: number;
+  modelUsed: string;
+  isDictionary: boolean;
+}
+
+export interface TranslationHistory {
+  items: TranslationHistoryItem[];
 }

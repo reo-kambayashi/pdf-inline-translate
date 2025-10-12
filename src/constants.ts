@@ -70,8 +70,25 @@ mitigate
 	autoInsertToNote: false,
 	insertionTemplate: `> {{original}}
 > 
-> {{translation}}`,
+> {{translation}}
+`,
 	timeoutMs: 30000, // 30 seconds
+	enableTranslationHistory: true,
+	maxHistoryItems: 50,
+	translationProvider: 'gemini',
+	openAIApiKey: '',
+	openAIModel: 'gpt-4',
+	anthropicApiKey: '',
+	anthropicModel: 'claude-3-sonnet-20240229',
+	popupWidth: 400,
+	popupHeight: 300,
+	popupPosition: 'top-right',
+	popupTheme: 'default',
+	fontSize: 'medium',
+	showOriginalText: true,
+	autoExpandPopup: false,
+	enableLanguageDetection: true,
+	sourceLanguage: 'auto',
 };
 
 // Auto-translate timing constants
@@ -106,7 +123,11 @@ export const ERROR_MESSAGES = {
   REQUEST_ABORTED: "翻訳リクエストが中断されました。",
   DICTIONARY_LOOKUP_FAILED: "辞書APIリクエスト失敗",
   INVALID_RECT: "矩形情報が無効です。",
-  POPUP_CREATION_FAILED: "翻訳ポップアップを開くことができませんでした。"
+  POPUP_CREATION_FAILED: "翻訳ポップアップを開くことができませんでした。",
+  API_QUOTA_EXCEEDED: "APIの使用制限に達しました。料金プランを確認してください。",
+  API_RATE_LIMITED: "APIのレート制限に達しました。しばらく時間を置いてから再度お試しください。",
+  API_AUTH_ERROR: "API認証エラー。APIキーが無効または期限切れです。",
+  CONTENT_BLOCKED: "Geminiが安全上またはコンテンツポリシーの理由で出力をブロックしました。"
 };
 
 // UI status message constants
@@ -114,5 +135,8 @@ export const UI_STATUS_MESSAGES = {
   LOADING: "Geminiに問い合わせ中…",
   PENDING: "翻訳を開始するには「A あ」アイコンをクリックしてください。",
   CANCELLED: "翻訳を中断しました。",
-  ERROR_DEFAULT: "翻訳に失敗しました。詳細はコンソールをご確認ください。"
+  ERROR_DEFAULT: "翻訳に失敗しました。詳細はコンソールをご確認ください。",
+  ERROR_API_KEY: "APIキーが設定されていません。設定を確認してください。",
+  ERROR_RATE_LIMIT: "レート制限に達しました。しばらくしてから再度お試しください。",
+  ERROR_QUOTA_EXCEEDED: "API利用制限に達しました。料金プランを確認してください。"
 };

@@ -3,14 +3,21 @@ import PdfInlineTranslatePlugin from "../main";
 import { GeminiTranslationFloatingPopup } from "./floating-popup";
 import { TranslationContext } from "../types";
 import { validateAndTrim } from "../utils";
+import { TranslationProviderManager } from "../translation-provider-manager";
+import { LanguageDetector } from "../language-detector";
 
 export class UIManager {
 	private plugin: PdfInlineTranslatePlugin;
 	floatingPopup: GeminiTranslationFloatingPopup | null = null;
 	private popupAbortController: AbortController | null = null;
+	private providerManager: TranslationProviderManager;
 
 	constructor(plugin: PdfInlineTranslatePlugin) {
 		this.plugin = plugin;
+		this.providerManager = new TranslationProviderManager(
+			plugin.settings,
+			plugin.historyManager
+		);
 	}
 
 	onload() {
@@ -80,6 +87,9 @@ export class UIManager {
 		// If the popup is already expanded, execute the translation immediately
 		if (popup.expanded) {
 			void this.executeTranslationRequest(popup, validatedText, safeContext);
+		} else if (this.plugin.settings.autoExpandPopup) {
+			// If auto-expand is enabled, expand the popup and start translation
+			void this.executeTranslationRequest(popup, validatedText, safeContext);
 		} else {
 			// If popup is collapsed but already exists, focus the popup
 			popup.focus();
@@ -145,18 +155,34 @@ export class UIManager {
 		
 		console.error("PDF Inline Translate: 翻訳エラー", error);
 		
-		const errorMessage = error instanceof Error 
-			? error.message 
-			: typeof error === 'string' 
-				? error 
-				: "翻訳に失敗しました。詳細はコンソールをご確認ください。";
+		// Provide more user-friendly error messages based on error type
+		let userFriendlyMessage = "翻訳に失敗しました。詳細はコンソールをご確認ください。";
 		
-		popup.showError(selectionText, context, errorMessage);
-		new Notice(
-			errorMessage.includes("Gemini翻訳エラー") 
-				? errorMessage 
-				: `Gemini翻訳エラー: ${errorMessage}`,
-		);
+		if (error instanceof Error) {
+			const errorMessage = error.message;
+			
+			// Handle specific error types with custom messages
+			if (errorMessage.includes("APIキー")) {
+				userFriendlyMessage = "APIキーが設定されていないか、無効です。設定を確認してください。";
+			} else if (errorMessage.includes("rate limit") || errorMessage.includes("Rate limit")) {
+				userFriendlyMessage = "APIのレート制限に達しました。しばらく時間を置いてから再度お試しください。";
+			} else if (errorMessage.includes("quota")) {
+				userFriendlyMessage = "APIの使用制限に達しました。料金プランを確認してください。";
+			} else if (errorMessage.includes("cancelled")) {
+				userFriendlyMessage = "翻訳がキャンセルされました。";
+			} else if (errorMessage.includes("empty")) {
+				userFriendlyMessage = "翻訳するテキストが空です。";
+			} else if (errorMessage.includes("Block") || errorMessage.includes("block")) {
+				userFriendlyMessage = "Geminiが安全上またはコンテンツポリシーの理由で出力をブロックしました。";
+			} else {
+				userFriendlyMessage = errorMessage;
+			}
+		} else if (typeof error === 'string') {
+			userFriendlyMessage = error;
+		}
+		
+		popup.showError(selectionText, context, userFriendlyMessage);
+		new Notice(`Gemini翻訳エラー: ${userFriendlyMessage}`);
 	}
 
 	private cleanupAbortController(abortController: AbortController) {
@@ -175,9 +201,19 @@ export class UIManager {
 
 		const { safeContext, abortController } = result;
 
+		// Determine source language
+		let sourceLanguage: string | undefined;
+		if (this.plugin.settings.enableLanguageDetection) {
+			sourceLanguage = LanguageDetector.detectLanguage(selectionText);
+		} else {
+			sourceLanguage = this.plugin.settings.sourceLanguage;
+		}
+
 		try {
-			const translation = await this.plugin.geminiClient.requestTranslation(
+			const translationResult = await this.providerManager.translate(
 				selectionText,
+				this.plugin.settings.targetLanguage,
+				sourceLanguage,
 				safeContext,
 				abortController.signal,
 			);
@@ -187,6 +223,12 @@ export class UIManager {
 				popup.showCancelled(selectionText, safeContext);
 				return;
 			}
+			
+			if (!translationResult.success || !translationResult.text) {
+				throw new Error(translationResult.error || "Translation failed");
+			}
+			
+			const translation = translationResult.text;
 			
 			if (!translation || typeof translation !== 'string' || translation.trim().length === 0) {
 				throw new Error("翻訳結果が無効です。");

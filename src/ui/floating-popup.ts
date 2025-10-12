@@ -208,6 +208,9 @@ export class GeminiTranslationFloatingPopup {
 			this.lastContext = context;
 		}
 
+		// Apply theme and size after render
+		this.applyTheme();
+
 		const header = this.createHeader();
 		const body = this.createBody();
 
@@ -277,6 +280,10 @@ export class GeminiTranslationFloatingPopup {
 
 		this.originalSection = document.createElement("div");
 		this.originalSection.className = "pdf-inline-translate__original-section";
+		
+		// Initialize original visibility based on settings
+		this.isOriginalVisible = this.plugin.settings.showOriginalText;
+		
 		this.originalToggleButton = document.createElement("button");
 		this.originalToggleButton.type = "button";
 		this.originalToggleButton.className = "pdf-inline-translate__original-toggle";
@@ -358,6 +365,9 @@ export class GeminiTranslationFloatingPopup {
 		container.classList.add("pdf-inline-translate__popup--collapsed");
 		container.classList.remove("pdf-inline-translate__popup--expanded");
 		container.innerHTML = "";
+
+		// Apply theme to collapsed state
+		this.applyTheme();
 
 		const button = document.createElement("button");
 		button.type = "button";
@@ -448,6 +458,36 @@ export class GeminiTranslationFloatingPopup {
 			}
 		}
 		this.renderExpandedState();
+	}
+	
+	applyTheme() {
+		if (!this.container) return;
+		
+		// Apply theme classes based on settings
+		const theme = this.plugin.settings.popupTheme;
+		const fontSize = this.plugin.settings.fontSize;
+		
+		// Remove existing theme classes
+		this.container.classList.remove(
+			'pdf-inline-translate__theme-default',
+			'pdf-inline-translate__theme-dark',
+			'pdf-inline-translate__theme-light',
+			'pdf-inline-translate__theme-blue',
+			'pdf-inline-translate__theme-green',
+			'pdf-inline-translate__font-small',
+			'pdf-inline-translate__font-medium',
+			'pdf-inline-translate__font-large'
+		);
+		
+		// Add theme class
+		this.container.classList.add(`pdf-inline-translate__theme-${theme}`);
+		this.container.classList.add(`pdf-inline-translate__font-${fontSize}`);
+		
+		// Apply size if container exists
+		if (this.container && this.isExpanded) {
+			this.container.style.width = `${this.plugin.settings.popupWidth}px`;
+			this.container.style.height = `${this.plugin.settings.popupHeight}px`;
+		}
 	}
 
 	renderExpandedState() {
@@ -784,7 +824,18 @@ export class GeminiTranslationFloatingPopup {
 		if (!this.originalSection || !this.originalToggleButton || !this.originalEl) {
 			return;
 		}
+		
+		// Check if original text display is enabled in settings
+		const showOriginal = this.plugin.settings.showOriginalText;
 		const hasOriginal = Boolean(this.originalText?.trim());
+		
+		// Hide the entire original section if setting is disabled
+		if (!showOriginal) {
+			this.originalSection.setAttribute("hidden", "true");
+			this.isOriginalVisible = false;
+			return;
+		}
+		
 		this.originalSection.toggleAttribute("hidden", !hasOriginal);
 		this.originalToggleButton.textContent = this.isOriginalVisible
 			? "原文を隠す"

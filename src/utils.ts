@@ -47,12 +47,26 @@ export function calculateBoundsFromClientRects(range: Range): any | null {
     return null;
   }
   
-  const rawRects = range.getClientRects?.();
+  let rawRects;
+  try {
+    rawRects = range.getClientRects?.();
+  } catch (error) {
+    console.error("PDF Inline Translate: Failed to get client rectangles", error);
+    return null;
+  }
+  
   if (!rawRects || rawRects.length === 0) {
     return null;
   }
   
-  const rects = Array.from(rawRects);
+  let rects;
+  try {
+    rects = Array.from(rawRects);
+  } catch (error) {
+    console.error("PDF Inline Translate: Failed to convert client rectangles to array", error);
+    return null;
+  }
+  
   if (rects.length === 0) {
     return null;
   }
@@ -64,10 +78,20 @@ export function calculateBoundsFromClientRects(range: Range): any | null {
   
   for (const item of rects) {
     if (item) {
-      top = Math.min(top, Number(item.top) || 0);
-      left = Math.min(left, Number(item.left) || 0);
-      right = Math.max(right, Number(item.right) || 0);
-      bottom = Math.max(bottom, Number(item.bottom) || 0);
+      const itemTop = Number(item.top) || 0;
+      const itemLeft = Number(item.left) || 0;
+      const itemRight = Number(item.right) || 0;
+      const itemBottom = Number(item.bottom) || 0;
+      
+      // Validate the values before using them
+      if (isNaN(itemTop) || isNaN(itemLeft) || isNaN(itemRight) || isNaN(itemBottom)) {
+        continue; // Skip invalid rectangle data
+      }
+      
+      top = Math.min(top, itemTop);
+      left = Math.min(left, itemLeft);
+      right = Math.max(right, itemRight);
+      bottom = Math.max(bottom, itemBottom);
     }
   }
   
@@ -144,6 +168,19 @@ export function safeParseNumber(value: any, defaultValue: number = 0): number {
   }
   
   return defaultValue;
+}
+
+// Enhanced error reporting function
+export function reportError(message: string, error: any, context?: string): void {
+  let fullMessage = message;
+  if (context) {
+    fullMessage = `${context}: ${message}`;
+  }
+  
+  console.error(`PDF Inline Translate: ${fullMessage}`, error);
+  
+  // Log to the history if available
+  // (This would be used in context where the plugin instance is available)
 }
 
 // Validation utilities
