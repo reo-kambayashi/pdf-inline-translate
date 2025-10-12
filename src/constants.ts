@@ -4,7 +4,6 @@ export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
 	apiKey: "",
 	model: "gemini-2.5-flash-lite",
 	targetLanguage: "日本語",
-	temperature: 0.1,
 	maxOutputTokens: 1024,
 	popupBackgroundColorAlpha: 0.9,
 };

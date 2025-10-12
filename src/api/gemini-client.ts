@@ -148,7 +148,7 @@ export class GeminiClient {
 				},
 			],
 			generationConfig: {
-				temperature: Number(this.settings.temperature) || 0.1,
+				temperature: 0.7,
 				maxOutputTokens: Number(this.settings.maxOutputTokens) || 1024,
 			},
 			systemInstruction: {

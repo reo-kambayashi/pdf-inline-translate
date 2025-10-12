@@ -56,19 +56,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 
 
 
-		new Setting(containerEl)
-			.setName("温度")
-			.setDesc("0に近いほど直訳寄り、値を上げると意訳が増えます。")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 1, 0.05)
-					.setDynamicTooltip()
-					.setValue(this.plugin.settings.temperature)
-					.onChange(async (value) => {
-						this.plugin.settings.temperature = value;
-						await this.plugin.saveSettings();
-					}),
-			);
+
 
 		new Setting(containerEl)
 			.setName("最大出力トークン")
