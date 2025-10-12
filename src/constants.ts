@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
 	targetLanguage: "日本語",
 	temperature: 0.1,
 	maxOutputTokens: 1024,
-	popupBackgroundColorAlpha: 0.8,
+	popupBackgroundColorAlpha: 0.9,
 };
 
 export const AUTO_TRANSLATE_DEBOUNCE_MS = 350;

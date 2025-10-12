@@ -71,20 +71,34 @@ export class GeminiClient {
 		text: string,
 		abortSignal: AbortSignal,
 	): Promise<boolean> {
+		if (!text || typeof text !== 'string') {
+			return false;
+		}
+		
 		const word = text.trim();
 		// スペースを含む、または長すぎる文字列は辞書検索から除外
-		if (word.includes(" ") || word.length > 50) {
+		if (word.includes(" ") || word.length > 50 || word.length === 0) {
 			return false;
 		}
 
 		try {
-			const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(
-				word,
-			)}`;
+			const encodedWord = encodeURIComponent(word);
+			if (!encodedWord || encodedWord !== word) {
+				// If encoding changed the string significantly, it might contain unsafe characters
+				return false;
+			}
+			
+			const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`;
 			const response = await fetch(url, {
 				method: "GET",
 				signal: abortSignal,
 			});
+			
+			// Check if the request was aborted during fetch
+			if (abortSignal.aborted) {
+				return false;
+			}
+			
 			return response.ok;
 		} catch (error) {
 			if (error.name !== "AbortError") {
@@ -102,10 +116,29 @@ export class GeminiClient {
 		context: any,
 		abortSignal: AbortSignal,
 	): Promise<string> {
+		if (!text || typeof text !== 'string' || text.trim().length === 0) {
+			throw new Error("翻訳するテキストが空です。");
+		}
+		
+		if (abortSignal.aborted) {
+			throw new Error("翻訳リクエストがキャンセルされました。");
+		}
+		
+		if (!this.settings.apiKey) {
+			throw new Error("Gemini APIキーが設定されていません。");
+		}
+		
+		if (!this.settings.model) {
+			throw new Error("Geminiモデルが設定されていません。");
+		}
+
 		const isDictionary = await this.isDictionaryWord(text, abortSignal);
 		const classification = isDictionary ? "dictionary" : "translation";
 
 		const prompt = this.buildPrompt(text, context, classification);
+		if (!prompt || typeof prompt !== 'string') {
+			throw new Error("プロンプトの生成に失敗しました。");
+		}
 
 		const body: any = {
 			contents: [
@@ -115,8 +148,8 @@ export class GeminiClient {
 				},
 			],
 			generationConfig: {
-				temperature: this.settings.temperature,
-				maxOutputTokens: this.settings.maxOutputTokens,
+				temperature: Number(this.settings.temperature) || 0.1,
+				maxOutputTokens: Number(this.settings.maxOutputTokens) || 1024,
 			},
 			systemInstruction: {
 				role: "system",
@@ -124,38 +157,80 @@ export class GeminiClient {
 			},
 		};
 
-		const url = `${GEMINI_API_BASE}/${encodeURIComponent(
-			this.settings.model,
-		)}:generateContent`;
+		const encodedModel = encodeURIComponent(this.settings.model);
+		if (!encodedModel) {
+			throw new Error("モデル名のエンコードに失敗しました。");
+		}
+		
+		const url = `${GEMINI_API_BASE}/${encodedModel}:generateContent`;
+
+		const requestBody = JSON.stringify(body);
+		if (!requestBody) {
+			throw new Error("リクエストボディの生成に失敗しました。");
+		}
 
 		const response = await fetch(url, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"x-goog-api-key": this.settings.apiKey,
+				"x-goog-api-key": String(this.settings.apiKey),
 			},
-			body: JSON.stringify(body),
+			body: requestBody,
 			signal: abortSignal,
 		});
+
+		if (abortSignal.aborted) {
+			throw new Error("翻訳リクエストがキャンセルされました。");
+		}
 
 		if (!response.ok) {
 			const errorDetail = await this._getApiErrorDetail(response);
 			throw new Error(errorDetail);
 		}
 
-		const responseData = await response.json();
+		let responseData;
+		try {
+			responseData = await response.json();
+		} catch (parseError) {
+			console.error("PDF Inline Translate: レスポンスのJSON解析に失敗しました", parseError);
+			throw new Error("Geminiからの応答を解析できませんでした。");
+		}
 
-		const parts: Array<{ text?: string }> =
-			responseData?.candidates?.[0]?.content?.parts ?? [];
-		const assembledTranslation = parts
+		if (!responseData || typeof responseData !== 'object') {
+			throw new Error("Geminiからの応答形式が不正です。");
+		}
+
+		const candidates = responseData?.candidates;
+		if (!Array.isArray(candidates) || candidates.length === 0) {
+			throw new Error("Geminiから翻訳結果を取得できませんでした。");
+		}
+
+		const firstCandidate = candidates[0];
+		if (!firstCandidate || typeof firstCandidate !== 'object') {
+			throw new Error("Geminiの応答形式が不正です。");
+		}
+
+		const content = firstCandidate?.content;
+		if (!content || typeof content !== 'object') {
+			throw new Error("Geminiの翻訳コンテンツがありません。");
+		}
+
+		const parts: Array<{ text?: string }> = Array.isArray(content?.parts) 
+			? content.parts 
+			: [];
+			
+		const safeParts = parts.filter(part => part && typeof part === 'object' && typeof part.text === 'string');
+		const assembledTranslation = safeParts
 			.map((part) => part?.text?.trim())
 			.filter((value): value is string => Boolean(value))
 			.join("\n\n")
 			.trim();
 		const fallbackTranslation =
-			responseData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+			safeParts.length > 0 && safeParts[0]?.text 
+				? safeParts[0].text.trim() 
+				: "";
 		const translation =
-			assembledTranslation.length > 0
+			assembledTranslation && assembledTranslation.length > 0
 				? assembledTranslation
 				: fallbackTranslation;
 
@@ -165,7 +240,7 @@ export class GeminiClient {
 
 		if (responseData?.promptFeedback?.blockReason) {
 			new Notice(
-				`Geminiが出力をブロックしました: ${responseData.promptFeedback.blockReason}`,
+				`Geminiが出力をブロックしました: ${String(responseData.promptFeedback.blockReason)}`,
 			);
 		}
 

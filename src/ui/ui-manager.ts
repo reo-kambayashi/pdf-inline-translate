@@ -22,6 +22,21 @@ export class UIManager {
 	}
 
 	openTranslationInPopup(selectionText: string, context: any) {
+		if (!selectionText || typeof selectionText !== 'string') {
+			new Notice("選択テキストが無効です。");
+			return;
+		}
+		
+		if (selectionText.trim().length === 0) {
+			new Notice("選択テキストが空です。");
+			return;
+		}
+		
+		if (selectionText.length > 10000) { // Set a reasonable limit
+			new Notice("選択テキストが長すぎます。");
+			return;
+		}
+
 		let popup;
 		try {
 			popup = this.getOrCreateFloatingPopup();
@@ -45,12 +60,12 @@ export class UIManager {
 			try {
 				this.popupAbortController.abort();
 			} catch (error) {
-				console.error(error);
+				console.error("PDF Inline Translate: AbortControllerの処理中にエラーが発生しました", error);
 			}
 			this.popupAbortController = null;
 		}
 
-		const safeContext = context ?? {};
+		const safeContext = context && typeof context === 'object' ? context : {};
 		popup.setExpandHandler(() => {
 			if (this.popupAbortController) {
 				return;
@@ -66,7 +81,18 @@ export class UIManager {
 		selectionText: string,
 		context: any,
 	) {
-		const safeContext = context ?? {};
+		if (!popup) {
+			console.error("PDF Inline Translate: ポップアップが無効です。");
+			return;
+		}
+		
+		if (!selectionText || typeof selectionText !== 'string' || selectionText.trim().length === 0) {
+			popup.showError(selectionText || "", context || {}, "選択テキストが無効です。");
+			new Notice("選択テキストが無効です。");
+			return;
+		}
+
+		const safeContext = context && typeof context === 'object' ? context : {};
 		popup.setExpandHandler(null);
 		popup.showLoading(selectionText, safeContext, true);
 		popup.focus();
@@ -75,7 +101,7 @@ export class UIManager {
 			try {
 				this.popupAbortController.abort();
 			} catch (error) {
-				console.error(error);
+				console.error("PDF Inline Translate: AbortControllerの処理中にエラーが発生しました", error);
 			}
 		}
 
@@ -83,31 +109,42 @@ export class UIManager {
 		this.popupAbortController = abortController;
 
 		try {
-			const translation =
-				await this.plugin.geminiClient.requestTranslation(
-					selectionText,
-					context,
-					abortController.signal,
-				);
+			const translation = await this.plugin.geminiClient.requestTranslation(
+				selectionText,
+				safeContext,
+				abortController.signal,
+			);
+			
+			// Check if the request was aborted after the API call completed
 			if (abortController.signal.aborted) {
 				popup.showCancelled(selectionText, safeContext);
 				return;
 			}
+			
+			if (!translation || typeof translation !== 'string' || translation.trim().length === 0) {
+				throw new Error("翻訳結果が無効です。");
+			}
+			
 			popup.showResult(selectionText, translation, safeContext);
 		} catch (error) {
 			if (abortController.signal.aborted) {
 				popup.showCancelled(selectionText, safeContext);
 				return;
 			}
-			console.error(error);
-			const message =
-				error?.message ??
-				"翻訳に失敗しました。詳細はコンソールをご確認ください。";
-			popup.showError(selectionText, safeContext, message);
+			
+			console.error("PDF Inline Translate: 翻訳エラー", error);
+			
+			const errorMessage = error instanceof Error 
+				? error.message 
+				: typeof error === 'string' 
+					? error 
+					: "翻訳に失敗しました。詳細はコンソールをご確認ください。";
+			
+			popup.showError(selectionText, safeContext, errorMessage);
 			new Notice(
-				error?.message
-					? `Gemini翻訳エラー: ${error.message}`
-					: "Gemini翻訳に失敗しました。",
+				errorMessage.includes("Gemini翻訳エラー") 
+					? errorMessage 
+					: `Gemini翻訳エラー: ${errorMessage}`,
 			);
 		} finally {
 			if (this.popupAbortController === abortController) {

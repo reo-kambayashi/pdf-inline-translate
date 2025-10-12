@@ -72,9 +72,14 @@ export default class PdfInlineTranslatePlugin extends Plugin {
 	}
 
 	openTranslation(selectionText: string, context: any) {
-		if (!this.settings.apiKey) {
+		if (!this.settings.apiKey || typeof this.settings.apiKey !== 'string' || this.settings.apiKey.trim().length === 0) {
 			new Notice("Gemini APIキーを設定してください。");
 			this.openSettingTab();
+			return;
+		}
+
+		if (!selectionText || typeof selectionText !== 'string' || selectionText.trim().length === 0) {
+			new Notice("選択テキストが無効です。");
 			return;
 		}
 
@@ -88,17 +93,29 @@ export default class PdfInlineTranslatePlugin extends Plugin {
 	}
 
 	getAssetUrl(relativePath: string): string | null {
-		if (!relativePath) {
+		if (!relativePath || typeof relativePath !== 'string' || relativePath.trim().length === 0) {
 			return null;
 		}
+		
 		const adapter = this.app?.vault?.adapter;
-		const configDir = this.app?.vault?.configDir ?? ".obsidian";
-		const pluginId = this.manifest?.id ?? "pdf-inline-translate";
+		if (!adapter) {
+			return null;
+		}
+		
+		const configDir = (this.app?.vault?.configDir && typeof this.app.vault.configDir === 'string') 
+			? this.app.vault.configDir 
+			: ".obsidian";
+		const pluginId = (this.manifest?.id && typeof this.manifest.id === 'string') 
+			? this.manifest.id 
+			: "pdf-inline-translate";
 		const normalizedPath = `${configDir}/plugins/${pluginId}/${relativePath}`;
 
-		if (adapter?.getResourcePath) {
+		if (typeof adapter.getResourcePath === 'function') {
 			try {
-				return adapter.getResourcePath(normalizedPath);
+				const resourcePath = adapter.getResourcePath(normalizedPath);
+				return (typeof resourcePath === 'string' && resourcePath.length > 0) 
+					? resourcePath 
+					: null;
 			} catch (error) {
 				console.error(
 					"PDF Inline Translate: アセットURLの取得に失敗しました。",

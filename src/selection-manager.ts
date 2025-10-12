@@ -97,12 +97,24 @@ export class SelectionManager {
 		}
 
 		const selection = window.getSelection?.();
-		const text = selection?.toString().trim();
-		const context = text
-			? this.resolvePdfSelectionContext(selection, text)
-			: null;
+		if (!selection) {
+			return;
+		}
+		
+		const text = selection.toString?.().trim() || "";
+		if (!text) {
+			if (this.plugin.floatingPopup?.hasPersistentState()) {
+				return;
+			}
+			this.plugin.closeFloatingPopup();
+			if (this.manuallyClosedSelectionKey) {
+				this.manuallyClosedSelectionKey = null;
+			}
+			return;
+		}
 
-		if (!text || !context) {
+		const context = this.resolvePdfSelectionContext(selection, text);
+		if (!context) {
 			if (this.plugin.floatingPopup?.hasPersistentState()) {
 				return;
 			}
@@ -174,17 +186,30 @@ export class SelectionManager {
 			return null;
 		}
 
-		const makePlainRect = (domRect: DOMRect) => ({
-			top: Number(domRect.top),
-			left: Number(domRect.left),
-			width: Number(domRect.width),
-			height: Number(domRect.height),
-			bottom: Number(domRect.bottom),
-			right: Number(domRect.right),
-			x: Number(domRect.x),
-			y: Number(domRect.y),
-			toJSON: () => {},
-		});
+		const makePlainRect = (domRect: any) => {
+			if (!domRect) return null;
+			
+			const top = Number(domRect.top) || 0;
+			const left = Number(domRect.left) || 0;
+			const width = Number(domRect.width) || 0;
+			const height = Number(domRect.height) || 0;
+			const bottom = Number(domRect.bottom) || 0;
+			const right = Number(domRect.right) || 0;
+			const x = Number(domRect.x) || 0;
+			const y = Number(domRect.y) || 0;
+			
+			return {
+				top,
+				left,
+				width,
+				height,
+				bottom,
+				right,
+				x,
+				y,
+				toJSON: () => {},
+			};
+		};
 
 		if (rect.width > 0 || rect.height > 0) {
 			return makePlainRect(rect);
@@ -193,25 +218,35 @@ export class SelectionManager {
 		if (typeof range.getClientRects !== "function") {
 			return null;
 		}
-		const rects = Array.from(range.getClientRects?.() ?? []);
+		const rawRects = range.getClientRects?.();
+		if (!rawRects || rawRects.length === 0) {
+			return null;
+		}
+		
+		const rects = Array.from(rawRects);
 		if (rects.length === 0) {
 			return null;
 		}
-		let top = rects[0].top;
-		let left = rects[0].left;
-		let right = rects[0].right;
-		let bottom = rects[0].bottom;
+		
+		let top = Number(rects[0].top) || 0;
+		let left = Number(rects[0].left) || 0;
+		let right = Number(rects[0].right) || 0;
+		let bottom = Number(rects[0].bottom) || 0;
+		
 		for (const item of rects) {
-			top = Math.min(top, item.top);
-			left = Math.min(left, item.left);
-			right = Math.max(right, item.right);
-			bottom = Math.max(bottom, item.bottom);
+			if (item) {
+				top = Math.min(top, Number(item.top) || 0);
+				left = Math.min(left, Number(item.left) || 0);
+				right = Math.max(right, Number(item.right) || 0);
+				bottom = Math.max(bottom, Number(item.bottom) || 0);
+			}
 		}
+		
 		return {
 			top: Number(top),
 			left: Number(left),
-			width: Number(right - left),
-			height: Number(bottom - top),
+			width: Math.abs(Number(right - left)),
+			height: Math.abs(Number(bottom - top)),
 			bottom: Number(bottom),
 			right: Number(right),
 			x: Number(left),
@@ -221,6 +256,10 @@ export class SelectionManager {
 	}
 
 	resolvePdfSelectionContext(selection: Selection, text: string): any | null {
+		if (!selection || selection.rangeCount === 0) {
+			return null;
+		}
+		
 		let range;
 		try {
 			range = selection.getRangeAt(0);
@@ -229,6 +268,10 @@ export class SelectionManager {
 			return null;
 		}
 
+		if (!range) {
+			return null;
+		}
+		
 		const candidateElement = this.findPdfSelectionElement(
 			range.commonAncestorContainer,
 		);
@@ -246,7 +289,7 @@ export class SelectionManager {
 		const context: any = {
 			selection: text,
 		};
-		if (Number.isFinite(pageNumber)) {
+		if (Number.isFinite(pageNumber) && pageNumber > 0) {
 			context.pageNumber = pageNumber;
 		}
 		const rect = this.extractRectFromRange(range);
@@ -257,9 +300,18 @@ export class SelectionManager {
 	}
 
 	findPdfSelectionElement(node: Node): HTMLElement | null {
+		if (!node) {
+			return null;
+		}
+		
 		let element =
 			node instanceof Element ? (node as HTMLElement) : node?.parentElement;
 		while (element) {
+			if (element.nodeType !== Node.ELEMENT_NODE) {
+				element = element.parentElement;
+				continue;
+			}
+			
 			if (element.matches?.(".page, [data-page-number]")) {
 				const viewer =
 					element.closest?.(
