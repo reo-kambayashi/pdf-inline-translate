@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import PdfInlineTranslatePlugin from "../main";
 import { GeminiTranslationFloatingPopup } from "./floating-popup";
+import { TranslationContext } from "../types";
 
 export class UIManager {
 	private plugin: PdfInlineTranslatePlugin;
@@ -21,7 +22,7 @@ export class UIManager {
 		this.destroyFloatingPopup();
 	}
 
-	openTranslationInPopup(selectionText: string, context: any) {
+	openTranslationInPopup(selectionText: string, context: TranslationContext) {
 		if (!selectionText || typeof selectionText !== 'string') {
 			new Notice("選択テキストが無効です。");
 			return;
@@ -76,27 +77,25 @@ export class UIManager {
 		popup.focus();
 	}
 
-	async executeTranslationRequest(
+	private async prepareTranslationRequest(
 		popup: GeminiTranslationFloatingPopup,
 		selectionText: string,
-		context: any,
+		context: TranslationContext,
 	) {
 		if (!popup) {
 			console.error("PDF Inline Translate: ポップアップが無効です。");
-			return;
+			return false;
 		}
 		
 		if (!selectionText || typeof selectionText !== 'string' || selectionText.trim().length === 0) {
 			popup.showError(selectionText || "", context || {}, "選択テキストが無効です。");
 			new Notice("選択テキストが無効です。");
-			return;
+			return false;
 		}
 
 		const safeContext = context && typeof context === 'object' ? context : {};
-		popup.setExpandHandler(null);
-		popup.showLoading(selectionText, safeContext, true);
-		popup.focus();
-
+		
+		// Cancel any existing request
 		if (this.popupAbortController) {
 			try {
 				this.popupAbortController.abort();
@@ -105,8 +104,67 @@ export class UIManager {
 			}
 		}
 
+		// Set up new abort controller
 		const abortController = new AbortController();
 		this.popupAbortController = abortController;
+
+		// Configure the popup
+		popup.setExpandHandler(null);
+		popup.showLoading(selectionText, safeContext, true);
+		popup.focus();
+
+		return { safeContext, abortController };
+	}
+
+	private handleTranslationSuccess(
+		popup: GeminiTranslationFloatingPopup,
+		selectionText: string,
+		translation: string,
+		context: TranslationContext,
+	) {
+		if (!popup) return;
+		popup.showResult(selectionText, translation, context);
+	}
+
+	private handleTranslationError(
+		popup: GeminiTranslationFloatingPopup,
+		selectionText: string,
+		context: TranslationContext,
+		error: any,
+	) {
+		if (!popup) return;
+		
+		console.error("PDF Inline Translate: 翻訳エラー", error);
+		
+		const errorMessage = error instanceof Error 
+			? error.message 
+			: typeof error === 'string' 
+				? error 
+				: "翻訳に失敗しました。詳細はコンソールをご確認ください。";
+		
+		popup.showError(selectionText, context, errorMessage);
+		new Notice(
+			errorMessage.includes("Gemini翻訳エラー") 
+				? errorMessage 
+				: `Gemini翻訳エラー: ${errorMessage}`,
+		);
+	}
+
+	private cleanupAbortController(abortController: AbortController) {
+		if (this.popupAbortController === abortController) {
+			this.popupAbortController = null;
+		}
+	}
+
+	async executeTranslationRequest(
+		popup: GeminiTranslationFloatingPopup,
+		selectionText: string,
+		context: TranslationContext,
+	) {
+		const result = await this.prepareTranslationRequest(popup, selectionText, context);
+		if (!result || typeof result === 'boolean') return;
+
+		const { safeContext, abortController } = result;
 
 		try {
 			const translation = await this.plugin.geminiClient.requestTranslation(
@@ -125,31 +183,16 @@ export class UIManager {
 				throw new Error("翻訳結果が無効です。");
 			}
 			
-			popup.showResult(selectionText, translation, safeContext);
+			this.handleTranslationSuccess(popup, selectionText, translation, safeContext);
 		} catch (error) {
 			if (abortController.signal.aborted) {
 				popup.showCancelled(selectionText, safeContext);
 				return;
 			}
 			
-			console.error("PDF Inline Translate: 翻訳エラー", error);
-			
-			const errorMessage = error instanceof Error 
-				? error.message 
-				: typeof error === 'string' 
-					? error 
-					: "翻訳に失敗しました。詳細はコンソールをご確認ください。";
-			
-			popup.showError(selectionText, safeContext, errorMessage);
-			new Notice(
-				errorMessage.includes("Gemini翻訳エラー") 
-					? errorMessage 
-					: `Gemini翻訳エラー: ${errorMessage}`,
-			);
+			this.handleTranslationError(popup, selectionText, safeContext, error);
 		} finally {
-			if (this.popupAbortController === abortController) {
-				this.popupAbortController = null;
-			}
+			this.cleanupAbortController(abortController);
 		}
 	}
 

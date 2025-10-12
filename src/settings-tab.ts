@@ -24,7 +24,12 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 					.setPlaceholder("AIza...")
 					.setValue(this.plugin.settings.apiKey)
 					.onChange(async (value) => {
-						this.plugin.settings.apiKey = value.trim();
+						// Basic validation for API key format
+						const trimmedValue = value.trim();
+						if (trimmedValue && !trimmedValue.startsWith('AIza')) {
+							console.warn('APIキーの形式が正しくない可能性があります。');
+						}
+						this.plugin.settings.apiKey = trimmedValue;
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -36,7 +41,13 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 				text
 					.setValue(this.plugin.settings.model)
 					.onChange(async (value) => {
-						this.plugin.settings.model = value.trim();
+						const trimmedValue = value.trim();
+						// Validate model name to prevent empty values
+						if (!trimmedValue) {
+							console.warn('モデル名を空にすることはできません。');
+							return;
+						}
+						this.plugin.settings.model = trimmedValue;
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -48,7 +59,8 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 				text
 					.setValue(this.plugin.settings.targetLanguage)
 					.onChange(async (value) => {
-						this.plugin.settings.targetLanguage = value.trim() || "日本語";
+						const trimmedValue = value.trim() || DEFAULT_SETTINGS.targetLanguage;
+						this.plugin.settings.targetLanguage = trimmedValue;
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -66,9 +78,12 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 					.setValue(String(this.plugin.settings.maxOutputTokens))
 					.onChange(async (value) => {
 						const parsed = Number(value);
-						this.plugin.settings.maxOutputTokens = Number.isFinite(parsed)
-							? parsed
-							: DEFAULT_SETTINGS.maxOutputTokens;
+						// Validate token number
+						if (!Number.isFinite(parsed) || parsed <= 0) {
+							console.warn('最大出力トークンは正の数値である必要があります。');
+							return;
+						}
+						this.plugin.settings.maxOutputTokens = parsed;
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -82,6 +97,11 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 					.setDynamicTooltip()
 					.setValue(this.plugin.settings.popupBackgroundColorAlpha)
 					.onChange(async (value) => {
+						// Validate alpha value
+						if (value < 0 || value > 1) {
+							console.warn('不透明度は0から1の間である必要があります。');
+							return;
+						}
 						this.plugin.settings.popupBackgroundColorAlpha = value;
 						this.plugin.updatePopupBackgroundColorAlpha();
 						await this.plugin.saveSettings();

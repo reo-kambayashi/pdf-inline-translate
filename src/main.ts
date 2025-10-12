@@ -1,5 +1,5 @@
 import { Plugin, Notice } from 'obsidian';
-import { PdfInlineTranslatePluginSettings } from './types';
+import { PdfInlineTranslatePluginSettings, TranslationContext } from './types';
 import { DEFAULT_SETTINGS } from './constants';
 import { PdfInlineTranslateSettingTab } from './settings-tab';
 import { GeminiTranslationFloatingPopup } from './ui/floating-popup';
@@ -20,7 +20,7 @@ export default class PdfInlineTranslatePlugin extends Plugin {
 	geminiClient: GeminiClient;
 	selectionManager: SelectionManager;
 	uiManager: UIManager;
-    lastSelection: { text: string; context: any; } | null = null;
+    lastSelection: { text: string; context: TranslationContext; } | null = null;
 
 	async onload() {
 		console.info("PDF Inline Translate (Gemini) ロード開始");
