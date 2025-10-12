@@ -67,14 +67,25 @@ export class UIManager {
 		}
 
 		const safeContext = context && typeof context === 'object' ? context : {};
+		
+		// Set up the expand handler to execute translation when expanded
 		popup.setExpandHandler(() => {
 			if (this.popupAbortController) {
 				return;
 			}
 			void this.executeTranslationRequest(popup, selectionText, safeContext);
 		});
+		
+		// Prepare the collapsed state with the new text
 		popup.prepareCollapsedState(selectionText, safeContext);
-		popup.focus();
+		
+		// If the popup is already expanded, execute the translation immediately
+		if (popup.expanded) {
+			void this.executeTranslationRequest(popup, selectionText, safeContext);
+		} else {
+			// If popup is collapsed but already exists, focus the popup
+			popup.focus();
+		}
 	}
 
 	private async prepareTranslationRequest(

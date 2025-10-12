@@ -96,26 +96,17 @@ export class SelectionManager {
   private shouldSkipSelection(text: string, context: TranslationContext | null): boolean {
     if (!text) {
       if (this.plugin.floatingPopup?.hasPersistentState()) {
-        return true;
+        // If popup is open but no text is selected, close the popup
+        this.plugin.closeFloatingPopup();
+        if (this.manuallyClosedSelectionKey) {
+          this.manuallyClosedSelectionKey = null;
+        }
       }
-      this.plugin.closeFloatingPopup();
-      if (this.manuallyClosedSelectionKey) {
-        this.manuallyClosedSelectionKey = null;
-      }
-      return true;
+      return true;  // Always skip if no text
     }
 
-    if (!context) {
-      if (this.plugin.floatingPopup?.hasPersistentState()) {
-        return true;
-      }
-      this.plugin.closeFloatingPopup();
-      if (this.manuallyClosedSelectionKey) {
-        this.manuallyClosedSelectionKey = null;
-      }
-      return true;
-    }
-
+    // We have text, but if context is null that's fine - it just means we might not have position/page info
+    // This is OK for translation, so don't skip if we have text
     return false;
   }
 
@@ -164,7 +155,19 @@ export class SelectionManager {
     this.manuallyClosedSelectionKey = null;
     this.lastAutoTranslateKey = key;
     this.lastAutoTranslateTriggeredAt = now;
-    this.plugin.openTranslation(text, context);
+
+    // Check if the floating popup is currently displayed
+    const popup = this.plugin.floatingPopup;
+
+    // If the popup is already open (expanded or collapsed), update its content and start translation immediately
+    if (popup && popup.hasPersistentState()) {
+      // Update the current state of the popup with new text and context
+      // Use an empty object if context is null to satisfy type requirements
+      this.plugin.uiManager.openTranslationInPopup(text, context || {});
+    } else {
+      // If popup is not open, proceed as normal
+      this.plugin.openTranslation(text, context);
+    }
   }
 
   prepareContext(context: TranslationContext): TranslationContext {

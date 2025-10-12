@@ -62,6 +62,10 @@ export class GeminiTranslationFloatingPopup {
 	setExpandHandler(handler: (() => void) | null) {
 		this.onExpandHandler = typeof handler === "function" ? handler : null;
 	}
+	
+	get expanded(): boolean {
+		return this.isExpanded;
+	}
 
 	showLoading(
 		original: string,
