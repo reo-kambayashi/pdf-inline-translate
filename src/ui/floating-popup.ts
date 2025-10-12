@@ -4,11 +4,14 @@ import { MarkdownRenderer } from "./markdown-renderer";
 import { TranslationState, TranslationContext } from "../types";
 import { 
   UI_STATUS_MESSAGES, 
-  ERROR_MESSAGES, 
   POPUP_DEFAULT_TOP, 
   POPUP_DEFAULT_LEFT,
   POPUP_OFFSET
 } from "./constants";
+import { 
+  isValidRect as utilsIsValidRect,
+  clamp as utilsClamp
+} from "../utils";
 
 export type MarkdownBlock =
 	| { type: "heading"; level: number; text: string }
@@ -621,7 +624,7 @@ export class GeminiTranslationFloatingPopup {
 		}
 		
 		let rect = null;
-		if (context?.rect && this.isValidRect(context.rect)) {
+		if (context?.rect && utilsIsValidRect(context.rect)) {
 			const rectData = context.rect;
 			// Validate rectangle values are numbers and not NaN
 			if (typeof rectData.top === 'number' && 
@@ -691,8 +694,8 @@ export class GeminiTranslationFloatingPopup {
 		
 		const maxTop = window.innerHeight - containerHeight - POPUP_OFFSET;
 		const maxLeft = window.innerWidth - containerWidth - POPUP_OFFSET;
-		const clampedTop = this.clamp(top, POPUP_OFFSET, Math.max(POPUP_OFFSET, maxTop));
-		const clampedLeft = this.clamp(left, POPUP_OFFSET, Math.max(POPUP_OFFSET, maxLeft));
+		const clampedTop = utilsClamp(top, POPUP_OFFSET, Math.max(POPUP_OFFSET, maxTop));
+		const clampedLeft = utilsClamp(left, POPUP_OFFSET, Math.max(POPUP_OFFSET, maxLeft));
 		
 		// Only apply position if values are valid
 		if (isFinite(clampedTop) && isFinite(clampedLeft)) {
@@ -711,22 +714,24 @@ export class GeminiTranslationFloatingPopup {
 		}
 	}
 
-	isValidRect(rect: any): boolean {
-		return (
-			rect &&
-			typeof rect.top === "number" &&
-			typeof rect.left === "number" &&
-			typeof rect.height === "number" &&
-			typeof rect.width === "number"
-		);
-	}
+	// isValidRect has been replaced with the utility function
+	// isValidRect(rect: any): boolean {
+	// 	return (
+	// 		rect &&
+	// 		typeof rect.top === "number" &&
+	// 		typeof rect.left === "number" &&
+	// 		typeof rect.height === "number" &&
+	// 		typeof rect.width === "number"
+	// 	);
+	// }
 
-	clamp(value: number, min: number, max: number): number {
-		if (!Number.isFinite(value)) {
-			return min;
-		}
-		return Math.min(Math.max(value, min), max);
-	}
+	// clamp has been replaced with the utility function
+	// clamp(value: number, min: number, max: number): number {
+	// 	if (!Number.isFinite(value)) {
+	// 		return min;
+	// 	}
+	// 	return Math.min(Math.max(value, min), max);
+	// }
 
 	addGlobalListener() {
 		this.removeGlobalListener();

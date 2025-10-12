@@ -2,6 +2,7 @@ import { Notice } from "obsidian";
 import PdfInlineTranslatePlugin from "../main";
 import { GeminiTranslationFloatingPopup } from "./floating-popup";
 import { TranslationContext } from "../types";
+import { validateAndTrim } from "../utils";
 
 export class UIManager {
 	private plugin: PdfInlineTranslatePlugin;
@@ -23,17 +24,14 @@ export class UIManager {
 	}
 
 	openTranslationInPopup(selectionText: string, context: TranslationContext) {
-		if (!selectionText || typeof selectionText !== 'string') {
+		// Use the validation utility function
+		const validatedText = validateAndTrim(selectionText);
+		if (!validatedText) {
 			new Notice("選択テキストが無効です。");
 			return;
 		}
 		
-		if (selectionText.trim().length === 0) {
-			new Notice("選択テキストが空です。");
-			return;
-		}
-		
-		if (selectionText.length > 10000) { // Set a reasonable limit
+		if (validatedText.length > 10000) { // Set a reasonable limit
 			new Notice("選択テキストが長すぎます。");
 			return;
 		}
@@ -73,15 +71,15 @@ export class UIManager {
 			if (this.popupAbortController) {
 				return;
 			}
-			void this.executeTranslationRequest(popup, selectionText, safeContext);
+			void this.executeTranslationRequest(popup, validatedText, safeContext);
 		});
 		
 		// Prepare the collapsed state with the new text
-		popup.prepareCollapsedState(selectionText, safeContext);
+		popup.prepareCollapsedState(validatedText, safeContext);
 		
 		// If the popup is already expanded, execute the translation immediately
 		if (popup.expanded) {
-			void this.executeTranslationRequest(popup, selectionText, safeContext);
+			void this.executeTranslationRequest(popup, validatedText, safeContext);
 		} else {
 			// If popup is collapsed but already exists, focus the popup
 			popup.focus();

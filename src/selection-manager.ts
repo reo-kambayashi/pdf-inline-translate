@@ -4,6 +4,10 @@ import {
   AUTO_TRANSLATE_REPEAT_THRESHOLD_MS,
 } from "./constants";
 import { TranslationContext } from "./types";
+import {
+  createPlainRect,
+  calculateBoundsFromClientRects
+} from "./utils";
 
 export class SelectionManager {
   private plugin: PdfInlineTranslatePlugin;
@@ -281,11 +285,11 @@ export class SelectionManager {
 
     // If the rectangle has meaningful dimensions, use it directly
     if (rect.width > 0 || rect.height > 0) {
-      return this.createPlainRect(rect);
+      return createPlainRect(rect);
     }
 
     // Otherwise, compute a bounding rectangle from client rectangles
-    return this.calculateBoundsFromClientRects(range);
+    return calculateBoundsFromClientRects(range);
   }
 
   resolvePdfSelectionContext(selection: Selection, text: string): TranslationContext | null {

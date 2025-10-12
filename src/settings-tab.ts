@@ -107,5 +107,96 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		// New settings
+
+		new Setting(containerEl)
+			.setName("PDF選択時に自動翻訳")
+			.setDesc("PDF++ 上でのテキスト選択完了後に自動で翻訳ビューを表示します。")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableAutoTranslate || false)
+					.onChange(async (value) => {
+						this.plugin.settings.enableAutoTranslate = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("温度")
+			.setDesc("モデル出力のランダム性を制御する値（0.0〜2.0）。低い値ほど決定的になります。")
+			.addSlider((slider) =>
+				slider
+					.setLimits(0, 2, 0.05)
+					.setDynamicTooltip()
+					.setValue(this.plugin.settings.temperature ?? 0.7)
+					.onChange(async (value) => {
+						if (value < 0 || value > 2) {
+							console.warn('温度は0から2の間である必要があります。');
+							return;
+						}
+						this.plugin.settings.temperature = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("タイムアウト (ミリ秒)")
+			.setDesc("翻訳API呼び出しのタイムアウト時間（ミリ秒）。0に設定するとタイムアウトなし。")
+			.addText((text) =>
+				text
+					.setValue(String(this.plugin.settings.timeoutMs ?? 30000))
+					.onChange(async (value) => {
+						const parsed = Number(value);
+						if (!Number.isFinite(parsed) || parsed < 0) {
+							console.warn('タイムアウトは0以上の数値である必要があります。');
+							return;
+						}
+						this.plugin.settings.timeoutMs = parsed;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("システム指示")
+			.setDesc("モデルに与える前提指示や翻訳スタイルを記述します。")
+			.addTextArea((textArea) => {
+				textArea
+					.setValue(this.plugin.settings.systemInstruction ?? DEFAULT_SETTINGS.systemInstruction)
+					.onChange(async (value) => {
+						this.plugin.settings.systemInstruction = value;
+						await this.plugin.saveSettings();
+					});
+				textArea.inputEl.rows = 6;
+				textArea.inputEl.cols = 50;
+			});
+
+		new Setting(containerEl)
+			.setName("翻訳プロンプトテンプレート")
+			.setDesc("翻訳に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。")
+			.addTextArea((textArea) => {
+				textArea
+					.setValue(this.plugin.settings.translationPromptTemplate ?? DEFAULT_SETTINGS.translationPromptTemplate)
+					.onChange(async (value) => {
+						this.plugin.settings.translationPromptTemplate = value;
+						await this.plugin.saveSettings();
+					});
+				textArea.inputEl.rows = 8;
+				textArea.inputEl.cols = 50;
+			});
+
+		new Setting(containerEl)
+			.setName("辞書プロンプトテンプレート")
+			.setDesc("辞書検索に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。")
+			.addTextArea((textArea) => {
+				textArea
+					.setValue(this.plugin.settings.dictionaryPromptTemplate ?? DEFAULT_SETTINGS.dictionaryPromptTemplate)
+					.onChange(async (value) => {
+						this.plugin.settings.dictionaryPromptTemplate = value;
+						await this.plugin.saveSettings();
+					});
+				textArea.inputEl.rows = 8;
+				textArea.inputEl.cols = 50;
+			});
 	}
 }

@@ -1,0 +1,168 @@
+/**
+ * Utility functions for PDF Inline Translate plugin
+ */
+
+// DOM utility functions
+export function isValidRect(rect: any): boolean {
+  return (
+    rect &&
+    typeof rect.top === "number" &&
+    typeof rect.left === "number" &&
+    typeof rect.height === "number" &&
+    typeof rect.width === "number" &&
+    typeof rect.right === "number" &&
+    typeof rect.bottom === "number" &&
+    typeof rect.x === "number" &&
+    typeof rect.y === "number"
+  );
+}
+
+export function createPlainRect(domRect: any): any | null {
+  if (!domRect) return null;
+  
+  const top = Number(domRect.top) || 0;
+  const left = Number(domRect.left) || 0;
+  const width = Number(domRect.width) || 0;
+  const height = Number(domRect.height) || 0;
+  const bottom = Number(domRect.bottom) || 0;
+  const right = Number(domRect.right) || 0;
+  const x = Number(domRect.x) || 0;
+  const y = Number(domRect.y) || 0;
+  
+  return {
+    top,
+    left,
+    width,
+    height,
+    bottom,
+    right,
+    x,
+    y,
+    toJSON: () => {},
+  };
+}
+
+export function calculateBoundsFromClientRects(range: Range): any | null {
+  if (typeof range.getClientRects !== "function") {
+    return null;
+  }
+  
+  const rawRects = range.getClientRects?.();
+  if (!rawRects || rawRects.length === 0) {
+    return null;
+  }
+  
+  const rects = Array.from(rawRects);
+  if (rects.length === 0) {
+    return null;
+  }
+  
+  let top = Number(rects[0].top) || 0;
+  let left = Number(rects[0].left) || 0;
+  let right = Number(rects[0].right) || 0;
+  let bottom = Number(rects[0].bottom) || 0;
+  
+  for (const item of rects) {
+    if (item) {
+      top = Math.min(top, Number(item.top) || 0);
+      left = Math.min(left, Number(item.left) || 0);
+      right = Math.max(right, Number(item.right) || 0);
+      bottom = Math.max(bottom, Number(item.bottom) || 0);
+    }
+  }
+  
+  return {
+    top: Number(top),
+    left: Number(left),
+    width: Math.abs(Number(right - left)),
+    height: Math.abs(Number(bottom - top)),
+    bottom: Number(bottom),
+    right: Number(right),
+    x: Number(left),
+    y: Number(top),
+    toJSON: () => {},
+  };
+}
+
+// Number utility functions
+export function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+}
+
+// Debounce utility function
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: number | null = null;
+  
+  return function executedFunction(...args: Parameters<T>): void {
+    const later = () => {
+      timeout = null;
+      func(...args);
+    };
+    
+    if (timeout !== null) {
+      window.clearTimeout(timeout);
+    }
+    
+    timeout = window.setTimeout(later, wait);
+  };
+}
+
+// Safe DOM manipulation utilities
+export function safeGetSelection(): Selection | null {
+  try {
+    return window.getSelection?.() || null;
+  } catch (error) {
+    console.debug("PDF Inline Translate: Failed to get selection", error);
+    return null;
+  }
+}
+
+export function safeGetRangeAt(selection: Selection, index: number = 0): Range | null {
+  try {
+    return selection.getRangeAt(index);
+  } catch (error) {
+    console.debug("PDF Inline Translate: Failed to get range at index", error);
+    return null;
+  }
+}
+
+// Safe number parsing
+export function safeParseNumber(value: any, defaultValue: number = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+  }
+  
+  return defaultValue;
+}
+
+// Validation utilities
+export function isValidApiKey(key: string): boolean {
+  return key && typeof key === 'string' && key.trim().length > 0 && key.startsWith('AIza');
+}
+
+export function isValidModelName(name: string): boolean {
+  return name && typeof name === 'string' && name.trim().length > 0;
+}
+
+export function isValidTargetLanguage(lang: string): boolean {
+  return lang && typeof lang === 'string' && lang.trim().length > 0;
+}
+
+// String utility
+export function validateAndTrim(value: any, fallbackValue: string = ""): string {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  return fallbackValue;
+}

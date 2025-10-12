@@ -1,29 +1,12 @@
 import { Notice } from "obsidian";
-import { PdfInlineTranslatePluginSettings, TranslationContext } from "../types";
 import { 
-  SYSTEM_INSTRUCTION, 
-  TRANSLATION_PROMPT_TEMPLATE, 
-  DICTIONARY_PROMPT_TEMPLATE,
-  GEMINI_API_BASE,
-  DICTIONARY_API_BASE,
+  PdfInlineTranslatePluginSettings, 
+  TranslationContext,
+  GeminiApiResponse
+} from "../types";
+import { 
   ERROR_MESSAGES 
-} from "../ui/constants";
-
-export interface GeminiResponse {
-  candidates?: Array<{
-    content: {
-      parts: Array<{ text: string }>;
-      role: string;
-    };
-    finishReason: string;
-    index: number;
-    safetyRatings?: Array<any>;
-  }>;
-  promptFeedback?: {
-    blockReason: string;
-    safetyRatings?: Array<any>;
-  };
-}
+} from "../constants";
 
 export class GeminiClient {
   constructor(private settings: PdfInlineTranslatePluginSettings) {}
@@ -49,7 +32,7 @@ export class GeminiClient {
         return false;
       }
       
-      const url = `${DICTIONARY_API_BASE}/en/${encodedWord}`;
+      const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`;
       const response = await fetch(url, {
         method: "GET",
         signal: abortSignal,
@@ -93,55 +76,86 @@ export class GeminiClient {
       throw new Error(ERROR_MESSAGES.NO_MODEL);
     }
 
-    const isDictionary = await this.isDictionaryWord(text, abortSignal);
-    const classification = isDictionary ? "dictionary" : "translation";
+    // Add timeout support if configured
+    const timeoutMs = this.settings.timeoutMs || 30000; // Default to 30 seconds
+    const timeoutAbortController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutAbortController.abort(), timeoutMs);
 
-    const prompt = this.buildPrompt(text, context, classification);
-    if (!prompt || typeof prompt !== 'string') {
-      throw new Error(ERROR_MESSAGES.PROMPT_FAILED);
+    try {
+      const isDictionary = await this.isDictionaryWord(text, abortSignal);
+      const classification = isDictionary ? "dictionary" : "translation";
+
+      const prompt = this.buildPrompt(text, context, classification);
+      if (!prompt || typeof prompt !== 'string') {
+        throw new Error(ERROR_MESSAGES.PROMPT_FAILED);
+      }
+
+      const requestBody = this.createRequestPayload(prompt);
+      const encodedModel = encodeURIComponent(this.settings.model);
+      if (!encodedModel) {
+        throw new Error("モデル名のエンコードに失敗しました。");
+      }
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodedModel}:generateContent`;
+
+      // Combine the request abort signal with the timeout abort signal
+      const combinedSignal = this.combineAbortSignals(abortSignal, timeoutAbortController.signal);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": String(this.settings.apiKey),
+        },
+        body: JSON.stringify(requestBody),
+        signal: combinedSignal,
+      });
+
+      if (abortSignal.aborted) {
+        throw new Error(ERROR_MESSAGES.CANCELLED);
+      }
+
+      if (!response.ok) {
+        const errorDetail = await this.getApiErrorDetail(response);
+        throw new Error(errorDetail);
+      }
+
+      const responseData: GeminiApiResponse = await this.parseResponse(response);
+
+      const translation = this.extractTranslationFromResponse(responseData);
+      if (!translation || translation.length === 0) {
+        throw new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
+      }
+
+      if (responseData?.promptFeedback?.blockReason) {
+        new Notice(
+          `Geminiが出力をブロックしました: ${String(responseData.promptFeedback.blockReason)}`,
+        );
+      }
+
+      return translation;
+    } finally {
+      clearTimeout(timeoutId);
+      if (!timeoutAbortController.signal.aborted) {
+        timeoutAbortController.abort();
+      }
     }
+  }
 
-    const requestBody = this.createRequestPayload(prompt);
-    const encodedModel = encodeURIComponent(this.settings.model);
-    if (!encodedModel) {
-      throw new Error("モデル名のエンコードに失敗しました。");
+  private combineAbortSignals(...signals: AbortSignal[]): AbortSignal {
+    const combinedController = new AbortController();
+    
+    for (const signal of signals) {
+      if (signal.aborted) {
+        combinedController.abort();
+        break;
+      }
+      signal.addEventListener('abort', () => {
+        combinedController.abort();
+      }, { once: true });
     }
     
-    const url = `${GEMINI_API_BASE}/${encodedModel}:generateContent`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": String(this.settings.apiKey),
-      },
-      body: JSON.stringify(requestBody),
-      signal: abortSignal,
-    });
-
-    if (abortSignal.aborted) {
-      throw new Error(ERROR_MESSAGES.CANCELLED);
-    }
-
-    if (!response.ok) {
-      const errorDetail = await this.getApiErrorDetail(response);
-      throw new Error(errorDetail);
-    }
-
-    const responseData = await this.parseResponse(response);
-
-    const translation = this.extractTranslationFromResponse(responseData);
-    if (!translation || translation.length === 0) {
-      throw new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
-    }
-
-    if (responseData?.promptFeedback?.blockReason) {
-      new Notice(
-        `Geminiが出力をブロックしました: ${String(responseData.promptFeedback.blockReason)}`,
-      );
-    }
-
-    return translation;
+    return combinedController.signal;
   }
 
   private createRequestPayload(prompt: string) {
@@ -153,18 +167,18 @@ export class GeminiClient {
         },
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: this.settings.temperature ?? 0.7,
         maxOutputTokens: Number(this.settings.maxOutputTokens) || 1024,
       },
       systemInstruction: {
         role: "system",
-        parts: [{ text: SYSTEM_INSTRUCTION }],
+        parts: [{ text: this.settings.systemInstruction ?? "" }],
       },
     };
   }
 
-  private async parseResponse(response: Response): Promise<GeminiResponse> {
-    let responseData: GeminiResponse;
+  private async parseResponse(response: Response): Promise<GeminiApiResponse> {
+    let responseData: GeminiApiResponse;
     try {
       responseData = await response.json();
     } catch (parseError) {
@@ -179,7 +193,7 @@ export class GeminiClient {
     return responseData;
   }
 
-  private extractTranslationFromResponse(responseData: GeminiResponse): string {
+  private extractTranslationFromResponse(responseData: GeminiApiResponse): string {
     const candidates = responseData?.candidates;
     if (!Array.isArray(candidates) || candidates.length === 0) {
       throw new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
@@ -235,10 +249,10 @@ export class GeminiClient {
   ): string {
     const template =
       classification === "dictionary"
-        ? DICTIONARY_PROMPT_TEMPLATE
-        : TRANSLATION_PROMPT_TEMPLATE;
+        ? this.settings.dictionaryPromptTemplate
+        : this.settings.translationPromptTemplate;
 
-    return template
+    return (template ?? "")
       .replaceAll("{{text}}", text)
       .replaceAll("{{targetLanguage}}", this.settings.targetLanguage)
       .replaceAll(

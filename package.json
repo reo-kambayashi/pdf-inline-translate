@@ -1,20 +1,27 @@
 {
   "name": "pdf-inline-translate",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "PDF++ プラグインで表示した PDF 内の選択テキストを Google Gemini に送信し、即座に翻訳結果を表示・コピーできる Obsidian プラグインです。",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node esbuild.config.js",
-    "build": "BUILD=production node esbuild.config.js"
+    "build": "BUILD=production node esbuild.config.js",
+    "lint": "eslint src/**/*.ts"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/reo-kambayashi/pdf-inline-translate.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "obsidian",
+    "pdf",
+    "translation",
+    "gemini",
+    "ai"
+  ],
+  "author": "reo",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/reo-kambayashi/pdf-inline-translate/issues"
