@@ -19,17 +19,6 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
         containerEl.createEl("h3", { text: "一般設定" });
 
 
-        new Setting(containerEl)
-            .setName('PDF選択時に自動翻訳')
-            .setDesc('PDF++ 上でのテキスト選択完了後に自動で翻訳ビューを表示します。')
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableAutoTranslate || false)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableAutoTranslate = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
 
         new Setting(containerEl)
             .setName('言語検出を有効にする')

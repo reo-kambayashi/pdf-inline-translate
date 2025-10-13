@@ -6,7 +6,6 @@ export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     targetLanguage: '日本語',
     maxOutputTokens: 1024,
     popupBackgroundColorAlpha: 0.9,
-    enableAutoTranslate: true,
     systemInstruction: `あなたは学術翻訳および専門用語の監修を担うプロフェッショナルです。次の原則を厳守してください。
 1. 原文の論理展開・専門用語・トーンを忠実に保持し、誤訳や意訳を避ける。
 2. 太字・斜体・数式・引用番号などの書式は可能な限り維持する。
