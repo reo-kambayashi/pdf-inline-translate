@@ -85,7 +85,7 @@ mitigate
     popupPosition: 'top-right',
     popupTheme: 'default',
     fontSize: 'medium',
-    showOriginalText: true,
+    showOriginalText: false,
     autoExpandPopup: false,
     enableLanguageDetection: true,
     sourceLanguage: 'auto',
