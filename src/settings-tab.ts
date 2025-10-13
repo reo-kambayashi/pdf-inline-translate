@@ -180,34 +180,6 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
         containerEl.createEl("h3", { text: "ポップアップUI" });
 
         new Setting(containerEl)
-            .setName('ポップアップ幅')
-            .setDesc('翻訳ポップアップの幅（ピクセル）')
-            .addSlider((slider) =>
-                slider
-                    .setLimits(200, 800, 50)
-                    .setDynamicTooltip()
-                    .setValue(this.plugin.settings.popupWidth)
-                    .onChange(async (value) => {
-                        this.plugin.settings.popupWidth = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName('ポップアップ高さ')
-            .setDesc('翻訳ポップアップの高さ（ピクセル）')
-            .addSlider((slider) =>
-                slider
-                    .setLimits(150, 600, 50)
-                    .setDynamicTooltip()
-                    .setValue(this.plugin.settings.popupHeight)
-                    .onChange(async (value) => {
-                        this.plugin.settings.popupHeight = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
             .setName('ポップアップ位置')
             .setDesc('翻訳ポップアップのデフォルト位置')
             .addDropdown((dropdown) =>

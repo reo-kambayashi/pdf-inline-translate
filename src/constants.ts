@@ -79,8 +79,6 @@ mitigate
     openAIModel: 'gpt-4',
     anthropicApiKey: '',
     anthropicModel: 'claude-3-sonnet-20240229',
-    popupWidth: 400,
-    popupHeight: 300,
     popupPosition: 'top-right',
     popupTheme: 'default',
     fontSize: 'medium',

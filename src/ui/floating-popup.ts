@@ -479,8 +479,7 @@ export class GeminiTranslationFloatingPopup {
 
         // Apply size if container exists
         if (this.container && this.isExpanded) {
-            this.container.style.width = `${this.plugin.settings.popupWidth}px`;
-            this.container.style.height = `${this.plugin.settings.popupHeight}px`;
+            this.container.classList.add('pdf-inline-translate__popup--autosize');
         }
     }
 
