@@ -145,6 +145,10 @@ export class SelectionManager {
             return;
         }
 
+        if (!context) {
+            return;
+        }
+
         const key = `${context?.pageNumber ?? 'N/A'}|${text}`;
         const now = Date.now();
 
