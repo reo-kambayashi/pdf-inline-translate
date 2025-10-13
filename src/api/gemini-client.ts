@@ -3,7 +3,6 @@ import {
     PdfInlineTranslatePluginSettings,
     TranslationContext,
     GeminiApiResponse,
-    TranslationHistoryItem,
 } from '../types';
 import { ERROR_MESSAGES } from '../constants';
 import { TranslationHistoryManager } from '../translation-history-manager';

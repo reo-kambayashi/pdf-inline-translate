@@ -157,7 +157,7 @@ export class UIManager {
         popup: GeminiTranslationFloatingPopup,
         selectionText: string,
         context: TranslationContext,
-        error: any,
+        error: unknown,
     ) {
         if (!popup) return;
 

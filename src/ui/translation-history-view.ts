@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import PdfInlineTranslatePlugin from '../main';
 import { TranslationHistoryItem } from '../types';
 

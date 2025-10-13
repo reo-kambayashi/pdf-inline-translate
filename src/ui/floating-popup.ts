@@ -5,7 +5,6 @@ import { TranslationState, TranslationContext } from '../types';
 import {
     UI_STATUS_MESSAGES,
     POPUP_DEFAULT_TOP,
-    POPUP_DEFAULT_LEFT,
     POPUP_OFFSET,
 } from './constants';
 import { isValidRect as utilsIsValidRect, clamp as utilsClamp } from '../utils';
@@ -626,7 +625,7 @@ export class GeminiTranslationFloatingPopup {
         this.applyPosition(top, left);
     }
 
-    onDragEnd(event: PointerEvent) {
+    onDragEnd() {
         if (!this.dragState || !this.container) {
             this.stopDragging();
             return;
