@@ -1,17 +1,178 @@
 import PdfInlineTranslatePlugin from './main';
+import { AUTO_TRANSLATE_DEBOUNCE_MS, AUTO_TRANSLATE_REPEAT_THRESHOLD_MS } from './constants';
 import { TranslationContext } from './types';
 import { createPlainRect, calculateBoundsFromClientRects } from './utils';
 
 export class SelectionManager {
     private plugin: PdfInlineTranslatePlugin;
+    private autoTranslateTimer: number | null = null;
+    private lastAutoTranslateKey: string | null = null;
+    private lastAutoTranslateTriggeredAt: number = 0;
+    isPointerSelecting: boolean = false;
+    private manuallyClosedSelectionKey: string | null = null;
+    private ignoreNextSelectionCheck: boolean = false;
 
     constructor(plugin: PdfInlineTranslatePlugin) {
         this.plugin = plugin;
     }
 
-    onload() {}
+    onload() {
+        this.plugin.registerDomEvent(document, 'selectionchange', () => {
+            this.scheduleAutoTranslateCheck();
+        });
 
-    onunload() {}
+        this.plugin.registerDomEvent(document, 'pointerdown', (event: PointerEvent) => {
+            this.cancelAutoTranslateTimer();
+            if (this.isEventInsidePluginUi(event)) {
+                this.isPointerSelecting = false;
+                this.ignoreNextSelectionCheck = true;
+                return;
+            }
+            this.isPointerSelecting = true;
+            this.ignoreNextSelectionCheck = false;
+        });
+
+        this.plugin.registerDomEvent(document, 'pointerup', (event: PointerEvent) => {
+            const interactedWithUi = this.isEventInsidePluginUi(event);
+            const shouldSkipCheck = interactedWithUi || this.ignoreNextSelectionCheck;
+            this.ignoreNextSelectionCheck = false;
+            this.isPointerSelecting = false;
+            if (shouldSkipCheck) {
+                return;
+            }
+            this.scheduleAutoTranslateCheck();
+        });
+
+        this.plugin.registerDomEvent(document, 'pointercancel', () => {
+            this.resetPointerSelectionState();
+        });
+
+        this.plugin.registerDomEvent(window, 'blur', () => {
+            this.resetPointerSelectionState();
+        });
+    }
+
+    onunload() {
+        this.cancelAutoTranslateTimer();
+        this.isPointerSelecting = false;
+    }
+
+    private resetPointerSelectionState() {
+        this.isPointerSelecting = false;
+        this.ignoreNextSelectionCheck = false;
+    }
+
+    private cancelAutoTranslateTimer() {
+        if (this.autoTranslateTimer) {
+            const cancelTimer = window?.clearTimeout ?? clearTimeout;
+            cancelTimer(this.autoTranslateTimer);
+            this.autoTranslateTimer = null;
+        }
+    }
+
+    scheduleAutoTranslateCheck(delay: number = AUTO_TRANSLATE_DEBOUNCE_MS) {
+        if (this.ignoreNextSelectionCheck) {
+            return;
+        }
+        if (
+            typeof document !== 'undefined' &&
+            typeof document.hasFocus === 'function' &&
+            !document.hasFocus()
+        ) {
+            return;
+        }
+
+        this.cancelAutoTranslateTimer();
+
+        const schedule = window?.setTimeout ?? setTimeout;
+        this.autoTranslateTimer = schedule(
+            () => {
+                this.autoTranslateTimer = null;
+                this.handleSelectionForAutoTranslate();
+            },
+            Math.max(0, delay),
+        );
+    }
+
+    private shouldSkipSelection(text: string, context: TranslationContext | null): boolean {
+        if (!text) {
+            if (this.plugin.floatingPopup?.hasPersistentState()) {
+                // If popup is open but no text is selected, close the popup
+                this.plugin.closeFloatingPopup();
+                if (this.manuallyClosedSelectionKey) {
+                    this.manuallyClosedSelectionKey = null;
+                }
+            }
+            return true; // Always skip if no text
+        }
+
+        // We have text, but if context is null that's fine - it just means we might not have position/page info
+        // This is OK for translation, so don't skip if we have text
+        return false;
+    }
+
+    private shouldSkipAutoTranslate(key: string): boolean {
+        if (this.manuallyClosedSelectionKey === key) {
+            return true;
+        }
+
+        const now = Date.now();
+        if (
+            this.lastAutoTranslateKey === key &&
+            now - this.lastAutoTranslateTriggeredAt < AUTO_TRANSLATE_REPEAT_THRESHOLD_MS
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    handleSelectionForAutoTranslate() {
+        if (this.isPointerSelecting) {
+            this.scheduleAutoTranslateCheck();
+            return;
+        }
+
+        const selection = window.getSelection?.();
+        if (!selection) {
+            return;
+        }
+
+        const text = selection.toString?.().trim() || '';
+        const context = this.resolvePdfSelectionContext(selection, text);
+
+        if (this.shouldSkipSelection(text, context)) {
+            return;
+        }
+
+        if (!context) {
+            return;
+        }
+
+        const key = `${context?.pageNumber ?? 'N/A'}|${text}`;
+        const now = Date.now();
+
+        if (this.shouldSkipAutoTranslate(key)) {
+            return;
+        }
+
+        this.manuallyClosedSelectionKey = null;
+        this.lastAutoTranslateKey = key;
+        this.lastAutoTranslateTriggeredAt = now;
+
+        // Check if the floating popup is currently displayed
+        const popup = this.plugin.floatingPopup;
+
+        // If the popup is already open (expanded or collapsed), update its content and start translation immediately
+        if (popup && popup.hasPersistentState()) {
+            // Update the current state of the popup with new text and context
+            // Use an empty object if context is null to satisfy type requirements
+            this.plugin.uiManager.openTranslationInPopup(text, context || {});
+        } else {
+            // If popup is not open, proceed as normal
+            this.plugin.openTranslation(text, context);
+        }
+    }
 
     prepareContext(context: TranslationContext): TranslationContext {
         const base = context && typeof context === 'object' ? { ...context } : {};
@@ -209,6 +370,14 @@ export class SelectionManager {
             element = element.parentElement;
         }
         return null;
+    }
+
+    setManuallyClosedSelectionKey(key: string | null) {
+        this.manuallyClosedSelectionKey = key;
+    }
+
+    getLastAutoTranslateKey(): string | null {
+        return this.lastAutoTranslateKey;
     }
 
     private isEventInsidePluginUi(event: Event): boolean {
