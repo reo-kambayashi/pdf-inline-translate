@@ -34,6 +34,15 @@ export class SelectionManager {
 
         this.plugin.registerDomEvent(document, 'pointerup', (event: PointerEvent) => {
             const interactedWithUi = this.isEventInsidePluginUi(event);
+
+            if (!interactedWithUi && event.target instanceof Element) {
+                const isClickOnPdf = this.findPdfViewer(event.target);
+                if (!isClickOnPdf && this.plugin.floatingPopup?.hasPersistentState()) {
+                    this.isPointerSelecting = false;
+                    return;
+                }
+            }
+
             const shouldSkipCheck = interactedWithUi || this.ignoreNextSelectionCheck;
             this.ignoreNextSelectionCheck = false;
             this.isPointerSelecting = false;
@@ -197,73 +206,6 @@ export class SelectionManager {
             console.debug('PDF Inline Translate: selection rect取得失敗', error);
             return null;
         }
-    }
-
-    private createPlainRect(domRect: any): any | null {
-        if (!domRect) return null;
-
-        const top = Number(domRect.top) || 0;
-        const left = Number(domRect.left) || 0;
-        const width = Number(domRect.width) || 0;
-        const height = Number(domRect.height) || 0;
-        const bottom = Number(domRect.bottom) || 0;
-        const right = Number(domRect.right) || 0;
-        const x = Number(domRect.x) || 0;
-        const y = Number(domRect.y) || 0;
-
-        return {
-            top,
-            left,
-            width,
-            height,
-            bottom,
-            right,
-            x,
-            y,
-            toJSON: () => {},
-        };
-    }
-
-    private calculateBoundsFromClientRects(range: Range): any | null {
-        if (typeof range.getClientRects !== 'function') {
-            return null;
-        }
-
-        const rawRects = range.getClientRects?.();
-        if (!rawRects || rawRects.length === 0) {
-            return null;
-        }
-
-        const rects = Array.from(rawRects);
-        if (rects.length === 0) {
-            return null;
-        }
-
-        let top = Number(rects[0].top) || 0;
-        let left = Number(rects[0].left) || 0;
-        let right = Number(rects[0].right) || 0;
-        let bottom = Number(rects[0].bottom) || 0;
-
-        for (const item of rects) {
-            if (item) {
-                top = Math.min(top, Number(item.top) || 0);
-                left = Math.min(left, Number(item.left) || 0);
-                right = Math.max(right, Number(item.right) || 0);
-                bottom = Math.max(bottom, Number(item.bottom) || 0);
-            }
-        }
-
-        return {
-            top: Number(top),
-            left: Number(left),
-            width: Math.abs(Number(right - left)),
-            height: Math.abs(Number(bottom - top)),
-            bottom: Number(bottom),
-            right: Number(right),
-            x: Number(left),
-            y: Number(top),
-            toJSON: () => {},
-        };
     }
 
     extractRectFromRange(range: Range): DOMRect | null {
