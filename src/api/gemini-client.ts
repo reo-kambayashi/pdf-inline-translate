@@ -1,10 +1,10 @@
-import { Notice } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 import {
     PdfInlineTranslatePluginSettings,
     TranslationContext,
     GeminiApiResponse,
 } from '../types';
-import { ERROR_MESSAGES } from '../constants';
+import { DICTIONARY_API_BASE, ERROR_MESSAGES } from '../constants';
 import { TranslationHistoryManager } from '../translation-history-manager';
 
 export class GeminiClient {
@@ -24,35 +24,56 @@ export class GeminiClient {
             return false;
         }
 
-        try {
-            const encodedWord = encodeURIComponent(word);
-            if (!encodedWord || encodedWord !== word) {
-                // If encoding changed the string significantly, it might contain unsafe characters
-                return false;
-            }
+        // 英単語として成立しているかを先にチェック
+        const dictionaryCandidatePattern = /^[A-Za-z][A-Za-z'’\-]*$/;
+        if (!dictionaryCandidatePattern.test(word)) {
+            return false;
+        }
 
-            const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`;
-            const response = await fetch(url, {
+        if (abortSignal.aborted) {
+            console.debug('Dictionary lookup cancelled before request.');
+            return false;
+        }
+
+        try {
+            const normalizedWord = word.toLowerCase();
+            const encodedWord = encodeURIComponent(normalizedWord);
+            const url = `${DICTIONARY_API_BASE}/en/${encodedWord}`;
+
+            // requestUrlはCORSの影響を受けない
+            const response = await requestUrl({
+                url: url,
                 method: 'GET',
-                signal: abortSignal,
+                throw: false, // 4xx, 5xx エラーで例外を投げないようにする
             });
 
-            // Check if the request was aborted during fetch
             if (abortSignal.aborted) {
-                throw new Error('Dictionary lookup was cancelled');
-            }
-
-            return response.ok;
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.debug('PDF Inline Translate: Dictionary lookup was cancelled', error);
-                throw new Error('Dictionary lookup was cancelled');
-            } else {
-                console.error('PDF Inline Translate: Dictionary API request failed', error);
-                // Don't throw the error for dictionary lookup failures, just return false
+                console.debug('Dictionary lookup cancelled after request.');
                 return false;
             }
+
+            // 200 OKなら単語が見つかった
+            if (response.status === 200) {
+                return true;
+            }
+
+            // 404 Not Found など、辞書APIで単語が見つからなかった場合は
+            // LLMベースの辞書生成にフォールバックする
+            if (response.status !== 404) {
+                console.debug(`Dictionary API request failed with status: ${response.status}`);
+            }
+        } catch (error) {
+            // ネットワークエラーなど、リクエスト自体が失敗した場合
+            console.debug('PDF Inline Translate: Dictionary API request failed at network level.', error);
         }
+
+        if (abortSignal.aborted) {
+            console.debug('Dictionary lookup cancelled after API fallback.');
+            return false;
+        }
+
+        // APIで見つからなくても英単語らしければ辞書スタイルで処理する
+        return true;
     }
 
     async requestTranslation(

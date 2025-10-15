@@ -11,6 +11,7 @@ export class SelectionManager {
     isPointerSelecting: boolean = false;
     private manuallyClosedSelectionKey: string | null = null;
     private ignoreNextSelectionCheck: boolean = false;
+    private preservePopupAfterExternalClick: boolean = false;
 
     constructor(plugin: PdfInlineTranslatePlugin) {
         this.plugin = plugin;
@@ -23,6 +24,7 @@ export class SelectionManager {
 
         this.plugin.registerDomEvent(document, 'pointerdown', (event: PointerEvent) => {
             this.cancelAutoTranslateTimer();
+            this.preservePopupAfterExternalClick = false;
             if (this.isEventInsidePluginUi(event)) {
                 this.isPointerSelecting = false;
                 this.ignoreNextSelectionCheck = true;
@@ -33,11 +35,15 @@ export class SelectionManager {
         });
 
         this.plugin.registerDomEvent(document, 'pointerup', (event: PointerEvent) => {
+            this.preservePopupAfterExternalClick = false;
             const interactedWithUi = this.isEventInsidePluginUi(event);
 
             if (!interactedWithUi && event.target instanceof Element) {
                 const isClickOnPdf = this.findPdfViewer(event.target);
                 if (!isClickOnPdf && this.plugin.floatingPopup?.hasPersistentState()) {
+                    this.ignoreNextSelectionCheck = true;
+                    this.cancelAutoTranslateTimer();
+                    this.preservePopupAfterExternalClick = true;
                     this.isPointerSelecting = false;
                     return;
                 }
@@ -69,6 +75,7 @@ export class SelectionManager {
     private resetPointerSelectionState() {
         this.isPointerSelecting = false;
         this.ignoreNextSelectionCheck = false;
+        this.preservePopupAfterExternalClick = false;
     }
 
     private cancelAutoTranslateTimer() {
@@ -105,6 +112,10 @@ export class SelectionManager {
 
     private shouldSkipSelection(text: string, context: TranslationContext | null): boolean {
         if (!text) {
+            if (this.preservePopupAfterExternalClick) {
+                this.preservePopupAfterExternalClick = false;
+                return true;
+            }
             if (this.plugin.floatingPopup?.hasPersistentState()) {
                 // If popup is open but no text is selected, close the popup
                 this.plugin.closeFloatingPopup();
@@ -149,6 +160,10 @@ export class SelectionManager {
 
         const text = selection.toString?.().trim() || '';
         const context = this.resolvePdfSelectionContext(selection, text);
+
+        if (text.length > 0) {
+            this.preservePopupAfterExternalClick = false;
+        }
 
         if (this.shouldSkipSelection(text, context)) {
             return;
