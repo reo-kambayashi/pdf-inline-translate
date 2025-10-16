@@ -1,11 +1,10 @@
 import { TranslationHistoryManager } from './translation-history-manager';
 import { TranslationProvider, TranslationResult } from './translation-provider';
 import { PdfInlineTranslatePluginSettings } from './types';
-import { Notice } from 'obsidian';
 import { GeminiClient } from './api/gemini-client';
 import { OpenAITranslationProvider } from './providers/openai-provider';
 import { AnthropicTranslationProvider } from './providers/anthropic-provider';
-import { TranslationHistoryManager } from './translation-history-manager';
+import { isDictionaryCandidate } from './utils/dictionary-utils';
 
 export class TranslationProviderManager {
     private providers: Map<string, TranslationProvider> = new Map();
@@ -116,9 +115,23 @@ export class TranslationProviderManager {
 
         // Check for cached translation first if history manager is available
         if (this.historyManager) {
-            const cachedResult = this.historyManager.findCachedTranslation(text, targetLang);
+            const dictionaryCandidate = isDictionaryCandidate(text);
+            const cacheOptions = dictionaryCandidate ? { isDictionary: true } : { isDictionary: false };
+            let cachedResult = this.historyManager.findCachedTranslation(
+                text,
+                targetLang,
+                cacheOptions,
+            );
+
+            if (!cachedResult) {
+                cachedResult = this.historyManager.findCachedTranslation(text, targetLang);
+            }
+
             if (cachedResult) {
-                console.debug(`Using cached translation for: ${text.substring(0, 50)}...`);
+                const cacheType = cachedResult.isDictionary ? 'dictionary' : 'translation';
+                console.debug(
+                    `Using cached ${cacheType} result for: ${text.substring(0, 50)}...`,
+                );
                 return {
                     text: cachedResult.translation,
                     success: true,
@@ -138,7 +151,12 @@ export class TranslationProviderManager {
         );
 
         // Add to history if successful and history manager is available
-        if (result.success && this.historyManager && result.text) {
+        if (
+            result.success &&
+            this.historyManager &&
+            result.text &&
+            this.currentProvider.getName() !== 'Gemini'
+        ) {
             this.historyManager.addToHistory(
                 text,
                 result.text,

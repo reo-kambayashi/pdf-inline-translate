@@ -129,15 +129,29 @@ export class TranslationHistoryManager {
      * @param targetLanguage The target language to match
      * @returns The cached translation if found, otherwise null
      */
-    findCachedTranslation(text: string, targetLanguage: string): TranslationHistoryItem | null {
+    findCachedTranslation(
+        text: string,
+        targetLanguage: string,
+        options?: { isDictionary?: boolean },
+    ): TranslationHistoryItem | null {
         if (!this.plugin.settings.enableTranslationHistory) {
             return null;
         }
 
+        const { isDictionary } = options ?? {};
+
         // Find the most recent match
-        const foundItem = this.history.items.find(
-            (item) => item.original === text && item.targetLanguage === targetLanguage,
-        );
+        const foundItem = this.history.items.find((item) => {
+            if (item.original !== text || item.targetLanguage !== targetLanguage) {
+                return false;
+            }
+
+            if (typeof isDictionary === 'boolean' && item.isDictionary !== isDictionary) {
+                return false;
+            }
+
+            return true;
+        });
 
         return foundItem || null;
     }

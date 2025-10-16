@@ -93,36 +93,6 @@ export interface GeminiApiResponse {
     };
 }
 
-export interface DictionaryApiResponse {
-    word: string;
-    phonetic?: string;
-    phonetics?: Array<{
-        text?: string;
-        audio?: string;
-        sourceUrl?: string;
-        license?: {
-            name: string;
-            url: string;
-        };
-    }>;
-    meanings?: Array<{
-        partOfSpeech: string;
-        definitions: Array<{
-            definition: string;
-            example?: string;
-            synonyms: string[];
-            antonyms: string[];
-        }>;
-        synonyms: string[];
-        antonyms: string[];
-    }>;
-    license?: {
-        name: string;
-        url: string;
-    };
-    sourceUrls: string[];
-}
-
 // Popup positioning interface
 export interface PopupPosition {
     top: number;

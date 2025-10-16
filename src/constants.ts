@@ -103,7 +103,6 @@ export const POPUP_DEFAULT_LEFT = 24;
 
 // API constants
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-export const DICTIONARY_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries';
 
 // Error message constants
 export const ERROR_MESSAGES = {
@@ -118,7 +117,6 @@ export const ERROR_MESSAGES = {
     INVALID_SELECTION: '選択テキストが無効です。',
     SELECTION_TOO_LONG: '選択テキストが長すぎます。',
     REQUEST_ABORTED: '翻訳リクエストが中断されました。',
-    DICTIONARY_LOOKUP_FAILED: '辞書APIリクエスト失敗',
     INVALID_RECT: '矩形情報が無効です。',
     POPUP_CREATION_FAILED: '翻訳ポップアップを開くことができませんでした。',
     API_QUOTA_EXCEEDED: 'APIの使用制限に達しました。料金プランを確認してください。',
