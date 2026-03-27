@@ -16,12 +16,8 @@ export interface PdfInlineTranslatePluginSettings {
     // Translation history options
     enableTranslationHistory: boolean;
     maxHistoryItems: number;
-    // Multi-provider options
-    translationProvider: 'gemini' | 'openai' | 'anthropic';
-    openAIApiKey?: string;
-    openAIModel?: string;
-    anthropicApiKey?: string;
-    anthropicModel?: string;
+    // Provider
+    translationProvider: 'gemini';
     // UI customization options
     popupWidth: number;
     popupHeight: number;
@@ -123,10 +119,3 @@ export interface TranslationHistoryItem {
 export interface TranslationHistory {
     items: TranslationHistoryItem[];
 }
-
-export type MarkdownBlock =
-    | { type: 'heading'; level: number; text: string }
-    | { type: 'paragraph'; lines: string[] }
-    | { type: 'list'; ordered: boolean; items: string[] }
-    | { type: 'blockquote'; lines: string[] }
-    | { type: 'code'; language: string; lines: string[] };

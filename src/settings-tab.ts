@@ -57,19 +57,8 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             async (value) => { this.plugin.settings.targetLanguage = value.trim() || DEFAULT_SETTINGS.targetLanguage; await this.plugin.saveSettings(); },
         );
 
-        // ── 翻訳プロバイダー ──────────────────────────────────────
-        containerEl.createEl('h3', { text: '翻訳プロバイダー' });
-
-        addDropdownSetting(
-            containerEl,
-            '翻訳プロバイダー',
-            '使用する翻訳サービスを選択してください。',
-            { gemini: 'Gemini', openai: 'OpenAI', anthropic: 'Anthropic' },
-            () => this.plugin.settings.translationProvider,
-            async (value) => { this.plugin.settings.translationProvider = value as never; await this.saveProviderSettings(); },
-        );
-
-        containerEl.createEl('h4', { text: 'Gemini' });
+        // ── Gemini API ────────────────────────────────────────────
+        containerEl.createEl('h3', { text: 'Gemini API' });
 
         addTextSetting(
             containerEl,
@@ -97,56 +86,6 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                 const trimmedValue = value.trim();
                 if (!trimmedValue) { console.warn('モデル名を空にすることはできません。'); return; }
                 this.plugin.settings.model = trimmedValue;
-                await this.saveProviderSettings();
-            },
-        );
-
-        containerEl.createEl('h4', { text: 'OpenAI' });
-
-        addTextSetting(
-            containerEl,
-            'OpenAI APIキー',
-            'OpenAI APIキーを入力してください（GPTを使用する場合）。',
-            'sk-...',
-            () => this.plugin.settings.openAIApiKey || '',
-            async (value) => { this.plugin.settings.openAIApiKey = value.trim(); await this.saveProviderSettings(); },
-        );
-
-        addTextSetting(
-            containerEl,
-            'OpenAI モデル',
-            '使用するOpenAIモデル名。',
-            '',
-            () => this.plugin.settings.openAIModel || 'gpt-4',
-            async (value) => {
-                const trimmedValue = value.trim();
-                if (!trimmedValue) { console.warn('OpenAIモデル名を空にすることはできません。'); return; }
-                this.plugin.settings.openAIModel = trimmedValue;
-                await this.saveProviderSettings();
-            },
-        );
-
-        containerEl.createEl('h4', { text: 'Anthropic' });
-
-        addTextSetting(
-            containerEl,
-            'Anthropic APIキー',
-            'Anthropic APIキーを入力してください（Claudeを使用する場合）。',
-            'ANTHROPIC_API_KEY',
-            () => this.plugin.settings.anthropicApiKey || '',
-            async (value) => { this.plugin.settings.anthropicApiKey = value.trim(); await this.saveProviderSettings(); },
-        );
-
-        addTextSetting(
-            containerEl,
-            'Anthropic モデル',
-            '使用するAnthropicモデル名。',
-            '',
-            () => this.plugin.settings.anthropicModel || 'claude-3-sonnet-20240229',
-            async (value) => {
-                const trimmedValue = value.trim();
-                if (!trimmedValue) { console.warn('Anthropicモデル名を空にすることはできません。'); return; }
-                this.plugin.settings.anthropicModel = trimmedValue;
                 await this.saveProviderSettings();
             },
         );

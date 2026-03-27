@@ -2,7 +2,7 @@ import { PdfInlineTranslatePluginSettings } from './types';
 
 export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     apiKey: '',
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-2.5-flash-lite',
     targetLanguage: '日本語',
     maxOutputTokens: 1024,
     popupBackgroundColorAlpha: 0.9,
@@ -76,10 +76,6 @@ mitigate
     enableTranslationHistory: true,
     maxHistoryItems: 50,
     translationProvider: 'gemini',
-    openAIApiKey: '',
-    openAIModel: 'gpt-4',
-    anthropicApiKey: '',
-    anthropicModel: 'claude-3-sonnet-20240229',
     popupWidth: 420,
     popupHeight: 320,
     popupPosition: 'top-right',
@@ -91,7 +87,7 @@ mitigate
     sourceLanguage: 'auto',
 };
 
-export const LEGACY_DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-lite';
+export const LEGACY_DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash-lite';
 
 // Auto-translate timing constants
 export const AUTO_TRANSLATE_DEBOUNCE_MS = 350;

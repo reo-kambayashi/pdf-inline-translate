@@ -2,8 +2,6 @@ import { TranslationHistoryManager } from './translation-history-manager';
 import { TranslationProvider, TranslationResult } from './translation-provider';
 import { PdfInlineTranslatePluginSettings } from './types';
 import { GeminiClient } from './api/gemini-client';
-import { OpenAITranslationProvider } from './providers/openai-provider';
-import { AnthropicTranslationProvider } from './providers/anthropic-provider';
 import { isDictionaryCandidate } from './utils/dictionary-utils';
 
 export class TranslationProviderManager {
@@ -24,12 +22,13 @@ export class TranslationProviderManager {
         // Initialize Gemini provider (always available)
         const geminiClient = new GeminiClient(this.settings, this.historyManager);
         this.providers.set('gemini', {
-            translate: async (text, targetLang, sourceLang, context, abortSignal) => {
+            translate: async (text, targetLang, sourceLang, context, abortSignal, onChunk) => {
                 try {
                     const result = await geminiClient.requestTranslation(
                         text,
                         context || {},
                         abortSignal || new AbortController().signal,
+                        onChunk,
                     );
                     return {
                         text: result,
@@ -53,28 +52,6 @@ export class TranslationProviderManager {
             getName: () => 'Gemini',
             getModel: () => this.settings.model,
         });
-
-        // Initialize OpenAI provider if API key is set
-        if (this.settings.openAIApiKey) {
-            this.providers.set(
-                'openai',
-                new OpenAITranslationProvider(
-                    this.settings.openAIApiKey,
-                    this.settings.openAIModel || 'gpt-4',
-                ),
-            );
-        }
-
-        // Initialize Anthropic provider if API key is set
-        if (this.settings.anthropicApiKey) {
-            this.providers.set(
-                'anthropic',
-                new AnthropicTranslationProvider(
-                    this.settings.anthropicApiKey,
-                    this.settings.anthropicModel || 'claude-3-sonnet-20240229',
-                ),
-            );
-        }
 
         // Set the current provider based on settings
         this.currentProvider =
@@ -103,7 +80,7 @@ export class TranslationProviderManager {
         if (provider) {
             this.currentProvider = provider;
             // Update the settings to persist the change
-            this.settings.translationProvider = providerName as any;
+            this.settings.translationProvider = providerName as 'gemini';
             return true;
         }
         return false;
@@ -115,6 +92,7 @@ export class TranslationProviderManager {
         sourceLang?: string,
         context?: any,
         abortSignal?: AbortSignal,
+        onChunk?: (text: string) => void,
     ): Promise<TranslationResult> {
         if (!this.currentProvider) {
             return {
@@ -159,6 +137,7 @@ export class TranslationProviderManager {
             sourceLang,
             context,
             abortSignal,
+            onChunk,
         );
 
         // Add to history if successful and history manager is available
@@ -186,13 +165,8 @@ export class TranslationProviderManager {
     }
 
     public validateProvider(): boolean {
-        const provider = this.settings.translationProvider;
-        if (provider === 'gemini' && !this.settings.apiKey) {
+        if (!this.settings.apiKey) {
             throw new Error('Gemini APIキーを設定してください。');
-        } else if (provider === 'openai' && !this.settings.openAIApiKey) {
-            throw new Error('OpenAI APIキーを設定してください。');
-        } else if (provider === 'anthropic' && !this.settings.anthropicApiKey) {
-            throw new Error('Anthropic APIキーを設定してください。');
         }
         return true;
     }
