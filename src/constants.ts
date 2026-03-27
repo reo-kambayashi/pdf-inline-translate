@@ -75,7 +75,6 @@ mitigate
     timeoutMs: 30000, // 30 seconds
     enableTranslationHistory: true,
     maxHistoryItems: 50,
-    translationProvider: 'gemini',
     popupWidth: 420,
     popupHeight: 320,
     popupPosition: 'top-right',
@@ -112,9 +111,9 @@ export const ERROR_MESSAGES = {
     NO_API_KEY: 'Gemini APIキーが設定されていません。',
     NO_MODEL: 'Geminiモデルが設定されていません。',
     PROMPT_FAILED: 'プロンプトの生成に失敗しました。',
-    RESPONSE_PARSE_FAILED: 'Geminiからの応答を解析できませんでした。',
+    RESPONSE_PARSE_FAILED: '翻訳応答を解析できませんでした。',
     INVALID_RESPONSE_FORMAT: 'Geminiからの応答形式が不正です。',
-    NO_TRANSLATION_RESULT: 'Geminiから翻訳結果を取得できませんでした。',
+    NO_TRANSLATION_RESULT: '翻訳結果を取得できませんでした。',
     INVALID_SELECTION: '選択テキストが無効です。',
     SELECTION_TOO_LONG: '選択テキストが長すぎます。',
     REQUEST_ABORTED: '翻訳リクエストが中断されました。',
@@ -128,7 +127,7 @@ export const ERROR_MESSAGES = {
 
 // UI status message constants
 export const UI_STATUS_MESSAGES = {
-    LOADING: 'Geminiに問い合わせ中…',
+    LOADING: '翻訳中…',
     PENDING: '翻訳を開始するにはボタンをクリックしてください。',
     CANCELLED: '翻訳を中断しました。',
     ERROR_DEFAULT: '翻訳に失敗しました。詳細はコンソールをご確認ください。',

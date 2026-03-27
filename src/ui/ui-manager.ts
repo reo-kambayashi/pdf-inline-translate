@@ -223,7 +223,7 @@ export class UIManager {
                 userFriendlyMessage = '翻訳するテキストが空です。';
             } else if (errorMessage.includes('Block') || errorMessage.includes('block')) {
                 userFriendlyMessage =
-                    'Geminiが安全上またはコンテンツポリシーの理由で出力をブロックしました。';
+                    '安全上またはコンテンツポリシーの理由で出力がブロックされました。';
             } else {
                 userFriendlyMessage = errorMessage;
             }
@@ -232,7 +232,7 @@ export class UIManager {
         }
 
         popup.showError(selectionText, context, userFriendlyMessage);
-        new Notice(`Gemini翻訳エラー: ${userFriendlyMessage}`);
+        new Notice(`翻訳エラー: ${userFriendlyMessage}`);
     }
 
     private cleanupAbortController(abortController: AbortController) {

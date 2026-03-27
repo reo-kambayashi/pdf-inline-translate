@@ -16,8 +16,6 @@ export interface PdfInlineTranslatePluginSettings {
     // Translation history options
     enableTranslationHistory: boolean;
     maxHistoryItems: number;
-    // Provider
-    translationProvider: 'gemini';
     // UI customization options
     popupWidth: number;
     popupHeight: number;

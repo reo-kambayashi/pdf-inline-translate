@@ -23,6 +23,7 @@ export interface BatchTranslationJob {
     status: 'pending' | 'processing' | 'completed' | 'failed';
     progress: number; // 0-100
     results: TranslationResult[];
+    abortController: AbortController;
 }
 
 export class BatchTranslationService {
@@ -53,6 +54,7 @@ export class BatchTranslationService {
             status: 'pending',
             progress: 0,
             results: [],
+            abortController: new AbortController(),
         };
 
         this.jobs.set(jobId, job);
@@ -86,6 +88,8 @@ export class BatchTranslationService {
                         item.text,
                         job.targetLang,
                         item.sourceLang,
+                        undefined,
+                        job.abortController.signal,
                     );
 
                     if (result.success) {
@@ -116,7 +120,7 @@ export class BatchTranslationService {
             await Promise.all(promises);
         }
 
-        job.status = 'completed';
+        job.status = job.items.every((i) => i.status === 'failed') ? 'failed' : 'completed';
         job.completedAt = Date.now();
 
         return job;
@@ -143,6 +147,7 @@ export class BatchTranslationService {
         const job = this.jobs.get(jobId);
         if (job) {
             job.status = 'failed'; // Use 'failed' status to indicate cancellation
+            job.abortController.abort();
             return true;
         }
         return false;

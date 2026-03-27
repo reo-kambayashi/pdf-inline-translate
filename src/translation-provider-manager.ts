@@ -53,11 +53,8 @@ export class TranslationProviderManager {
             getModel: () => this.settings.model,
         });
 
-        // Set the current provider based on settings
-        this.currentProvider =
-            this.providers.get(this.settings.translationProvider) ||
-            this.providers.get('gemini') ||
-            null;
+        // Set the current provider
+        this.currentProvider = this.providers.get('gemini') || null;
     }
 
     refreshProviders(): void {

@@ -101,30 +101,40 @@ export class GeminiHttpClient {
                 throw new Error(ERROR_MESSAGES.RESPONSE_PARSE_FAILED);
             }
 
+            if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                throw new Error(ERROR_MESSAGES.CANCELLED);
+            }
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
             let accumulated = '';
 
-            while (true) {
-                if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
-                    reader.cancel();
-                    throw new Error(ERROR_MESSAGES.CANCELLED);
-                }
+            try {
+                while (true) {
+                    if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                        reader.cancel();
+                        throw new Error(ERROR_MESSAGES.CANCELLED);
+                    }
 
-                const { done, value } = await reader.read();
-                if (done) break;
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() ?? '';
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() ?? '';
 
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    const jsonStr = line.slice(6).trim();
-                    if (!jsonStr) continue;
-                    try {
-                        const data = JSON.parse(jsonStr) as GeminiApiResponse;
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const jsonStr = line.slice(6).trim();
+                        if (!jsonStr) continue;
+                        let data: GeminiApiResponse;
+                        try {
+                            data = JSON.parse(jsonStr) as GeminiApiResponse;
+                        } catch {
+                            // malformed SSE chunk — skip
+                            continue;
+                        }
                         const parts = data?.candidates?.[0]?.content?.parts;
                         if (!Array.isArray(parts)) continue;
                         for (const part of parts) {
@@ -133,10 +143,10 @@ export class GeminiHttpClient {
                                 onChunk(part.text);
                             }
                         }
-                    } catch {
-                        // malformed SSE chunk — skip
                     }
                 }
+            } finally {
+                reader.cancel();
             }
 
             return accumulated;

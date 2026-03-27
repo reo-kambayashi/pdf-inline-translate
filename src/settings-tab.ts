@@ -26,7 +26,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'PDF Inline Translate (Gemini) 設定' });
+        containerEl.createEl('h2', { text: 'PDF Inline Translate 設定' });
 
         // ── 一般設定 ──────────────────────────────────────────────
         containerEl.createEl('h3', { text: '一般設定' });
@@ -57,7 +57,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             async (value) => { this.plugin.settings.targetLanguage = value.trim() || DEFAULT_SETTINGS.targetLanguage; await this.plugin.saveSettings(); },
         );
 
-        // ── Gemini API ────────────────────────────────────────────
+        // ── Gemini API ────────────────────────────────────────
         containerEl.createEl('h3', { text: 'Gemini API' });
 
         addTextSetting(

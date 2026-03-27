@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 
 export interface HeaderRefs {
     element: HTMLElement;
+    titleEl: HTMLSpanElement;
     statusBadgeEl: HTMLSpanElement;
     collapseButton: HTMLButtonElement;
 }
@@ -21,6 +22,7 @@ export class PopupDomBuilder {
         onCollapse: () => void,
         onClose: () => void,
         onDragStart: (event: PointerEvent) => void,
+        titleText = '翻訳',
     ): HeaderRefs {
         const header = document.createElement('div');
         header.className = 'pdf-inline-translate__popup-header';
@@ -29,7 +31,7 @@ export class PopupDomBuilder {
         headline.className = 'pdf-inline-translate__popup-headline';
         const title = document.createElement('span');
         title.className = 'pdf-inline-translate__popup-title';
-        title.textContent = 'Gemini翻訳';
+        title.textContent = titleText;
         headline.appendChild(title);
 
         const statusBadgeEl = document.createElement('span');
@@ -66,7 +68,7 @@ export class PopupDomBuilder {
 
         header.addEventListener('pointerdown', onDragStart);
 
-        return { element: header, statusBadgeEl, collapseButton };
+        return { element: header, titleEl: title, statusBadgeEl, collapseButton };
     }
 
     static buildBody(

@@ -172,7 +172,7 @@ export class GeminiTranslationFloatingPopup {
         container.style.display = 'flex';
         container.setAttribute('aria-hidden', 'false');
         container.setAttribute('role', 'dialog');
-        container.setAttribute('aria-label', 'Gemini翻訳');
+        container.setAttribute('aria-label', '翻訳');
         container.innerHTML = '';
         this.originalText = original ?? '';
         if (context && typeof context === 'object' && Object.keys(context).length > 0) {
@@ -181,10 +181,12 @@ export class GeminiTranslationFloatingPopup {
 
         this.applyTheme();
 
+        const modelTitle = this.plugin.providerManager.getProvider()?.getModel() ?? '翻訳';
         const headerRefs: HeaderRefs = PopupDomBuilder.buildHeader(
             () => this.renderCollapsed(this.lastContext ?? this.currentState?.context ?? {}),
             () => this.handleClose(),
             (event) => this.dragHandler.startDrag(event),
+            modelTitle,
         );
         const bodyRefs: BodyRefs = PopupDomBuilder.buildBody(
             this.isOriginalVisible,
@@ -241,7 +243,7 @@ export class GeminiTranslationFloatingPopup {
         container.style.display = 'flex';
         container.setAttribute('aria-hidden', 'false');
         container.setAttribute('role', 'button');
-        container.setAttribute('aria-label', 'Gemini翻訳を開く');
+        container.setAttribute('aria-label', '翻訳を開く');
         container.classList.add('pdf-inline-translate__popup--collapsed');
         container.classList.remove('pdf-inline-translate__popup--expanded');
         container.innerHTML = '';
@@ -251,7 +253,7 @@ export class GeminiTranslationFloatingPopup {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'pdf-inline-translate__collapsed-button';
-        button.setAttribute('aria-label', 'Gemini翻訳を開く');
+        button.setAttribute('aria-label', '翻訳を開く');
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -291,14 +293,14 @@ export class GeminiTranslationFloatingPopup {
 
     private getCollapsedTooltip(): string {
         const state = this.currentState;
-        if (!state) return 'Gemini翻訳';
+        if (!state) return '翻訳';
         switch (state.type) {
             case 'loading':   return '翻訳を準備しています…クリックで詳細を表示';
             case 'result':    return '翻訳が完了しました。クリックで結果を表示';
             case 'error':     return '翻訳に失敗しました。クリックで詳細を表示';
             case 'cancelled': return '翻訳を中断しました。クリックで詳細を表示';
             case 'pending':   return '翻訳を開始するにはクリックしてください';
-            default:          return 'Gemini翻訳';
+            default:          return '翻訳';
         }
     }
 
