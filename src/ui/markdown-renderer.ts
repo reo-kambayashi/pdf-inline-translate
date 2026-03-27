@@ -1,4 +1,4 @@
-import { MarkdownBlock } from './floating-popup';
+import { MarkdownBlock } from '../types';
 
 export class MarkdownRenderer {
     /**

@@ -1,6 +1,13 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab } from 'obsidian';
 import PdfInlineTranslatePlugin from './main';
 import { DEFAULT_SETTINGS } from './constants';
+import {
+    addToggleSetting,
+    addTextSetting,
+    addDropdownSetting,
+    addSliderSetting,
+    addTextAreaSetting,
+} from './settings-helpers';
 
 export class PdfInlineTranslateSettingTab extends PluginSettingTab {
     plugin: PdfInlineTranslatePlugin;
@@ -21,400 +28,283 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 
         containerEl.createEl('h2', { text: 'PDF Inline Translate (Gemini) 設定' });
 
-        containerEl.createEl("h3", { text: "一般設定" });
+        // ── 一般設定 ──────────────────────────────────────────────
+        containerEl.createEl('h3', { text: '一般設定' });
 
+        addToggleSetting(
+            containerEl,
+            '言語検出を有効にする',
+            '入力テキストの言語を自動検出する',
+            () => this.plugin.settings.enableLanguageDetection,
+            async (value) => { this.plugin.settings.enableLanguageDetection = value; await this.plugin.saveSettings(); },
+        );
 
+        addTextSetting(
+            containerEl,
+            '原文言語',
+            '言語検出を無効にした場合のデフォルト言語',
+            '例: en, ja, zh, auto',
+            () => this.plugin.settings.sourceLanguage,
+            async (value) => { this.plugin.settings.sourceLanguage = value.trim() || 'auto'; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('言語検出を有効にする')
-            .setDesc('入力テキストの言語を自動検出する')
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableLanguageDetection)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableLanguageDetection = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            '出力言語',
+            '翻訳結果を出力したい言語を指定します。',
+            '',
+            () => this.plugin.settings.targetLanguage,
+            async (value) => { this.plugin.settings.targetLanguage = value.trim() || DEFAULT_SETTINGS.targetLanguage; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('原文言語')
-            .setDesc('言語検出を無効にした場合のデフォルト言語')
-            .addText((text) =>
-                text
-                    .setPlaceholder('例: en, ja, zh, auto')
-                    .setValue(this.plugin.settings.sourceLanguage)
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim() || 'auto';
-                        this.plugin.settings.sourceLanguage = trimmedValue;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        // ── 翻訳プロバイダー ──────────────────────────────────────
+        containerEl.createEl('h3', { text: '翻訳プロバイダー' });
 
-        new Setting(containerEl)
-            .setName('出力言語')
-            .setDesc('翻訳結果を出力したい言語を指定します。')
-            .addText((text) =>
-                text.setValue(this.plugin.settings.targetLanguage).onChange(async (value) => {
-                    const trimmedValue = value.trim() || DEFAULT_SETTINGS.targetLanguage;
-                    this.plugin.settings.targetLanguage = trimmedValue;
-                    await this.plugin.saveSettings();
-                }),
-            );
+        addDropdownSetting(
+            containerEl,
+            '翻訳プロバイダー',
+            '使用する翻訳サービスを選択してください。',
+            { gemini: 'Gemini', openai: 'OpenAI', anthropic: 'Anthropic' },
+            () => this.plugin.settings.translationProvider,
+            async (value) => { this.plugin.settings.translationProvider = value as never; await this.saveProviderSettings(); },
+        );
 
+        containerEl.createEl('h4', { text: 'Gemini' });
 
-        containerEl.createEl("h3", { text: "翻訳プロバイダー" });
+        addTextSetting(
+            containerEl,
+            'Gemini APIキー',
+            'https://aistudio.google.com/ で発行したAPIキーを入力してください。',
+            'AIza...',
+            () => this.plugin.settings.apiKey,
+            async (value) => {
+                const trimmedValue = value.trim();
+                if (trimmedValue && !trimmedValue.startsWith('AIza')) {
+                    console.warn('APIキーの形式が正しくない可能性があります。');
+                }
+                this.plugin.settings.apiKey = trimmedValue;
+                await this.saveProviderSettings();
+            },
+        );
 
-        new Setting(containerEl)
-            .setName('翻訳プロバイダー')
-            .setDesc('使用する翻訳サービスを選択してください。')
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption('gemini', 'Gemini')
-                    .addOption('openai', 'OpenAI')
-                    .addOption('anthropic', 'Anthropic')
-                    .setValue(this.plugin.settings.translationProvider)
-                    .onChange(async (value) => {
-                        this.plugin.settings.translationProvider = value as any;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            'モデル',
+            '使用するGeminiモデル名。例: gemini-3.1-flash-lite-preview',
+            DEFAULT_SETTINGS.model,
+            () => this.plugin.settings.model,
+            async (value) => {
+                const trimmedValue = value.trim();
+                if (!trimmedValue) { console.warn('モデル名を空にすることはできません。'); return; }
+                this.plugin.settings.model = trimmedValue;
+                await this.saveProviderSettings();
+            },
+        );
 
-        containerEl.createEl("h4", { text: "Gemini" });
+        containerEl.createEl('h4', { text: 'OpenAI' });
 
-        new Setting(containerEl)
-            .setName('Gemini APIキー')
-            .setDesc('https://aistudio.google.com/ で発行したAPIキーを入力してください。')
-            .addText((text) =>
-                text
-                    .setPlaceholder('AIza...')
-                    .setValue(this.plugin.settings.apiKey)
-                    .onChange(async (value) => {
-                        // Basic validation for API key format
-                        const trimmedValue = value.trim();
-                        if (trimmedValue && !trimmedValue.startsWith('AIza')) {
-                            console.warn('APIキーの形式が正しくない可能性があります。');
-                        }
-                        this.plugin.settings.apiKey = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            'OpenAI APIキー',
+            'OpenAI APIキーを入力してください（GPTを使用する場合）。',
+            'sk-...',
+            () => this.plugin.settings.openAIApiKey || '',
+            async (value) => { this.plugin.settings.openAIApiKey = value.trim(); await this.saveProviderSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('モデル')
-            .setDesc('使用するGeminiモデル名。例: gemini-3.1-flash-lite-preview')
-            .addText((text) =>
-                text
-                    .setPlaceholder(DEFAULT_SETTINGS.model)
-                    .setValue(this.plugin.settings.model)
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim();
-                        // Validate model name to prevent empty values
-                        if (!trimmedValue) {
-                            console.warn('モデル名を空にすることはできません。');
-                            return;
-                        }
-                        this.plugin.settings.model = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            'OpenAI モデル',
+            '使用するOpenAIモデル名。',
+            '',
+            () => this.plugin.settings.openAIModel || 'gpt-4',
+            async (value) => {
+                const trimmedValue = value.trim();
+                if (!trimmedValue) { console.warn('OpenAIモデル名を空にすることはできません。'); return; }
+                this.plugin.settings.openAIModel = trimmedValue;
+                await this.saveProviderSettings();
+            },
+        );
 
-        containerEl.createEl("h4", { text: "OpenAI" });
+        containerEl.createEl('h4', { text: 'Anthropic' });
 
-        new Setting(containerEl)
-            .setName('OpenAI APIキー')
-            .setDesc('OpenAI APIキーを入力してください（GPTを使用する場合）。')
-            .addText((text) =>
-                text
-                    .setPlaceholder('sk-...')
-                    .setValue(this.plugin.settings.openAIApiKey || '')
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim();
-                        this.plugin.settings.openAIApiKey = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            'Anthropic APIキー',
+            'Anthropic APIキーを入力してください（Claudeを使用する場合）。',
+            'ANTHROPIC_API_KEY',
+            () => this.plugin.settings.anthropicApiKey || '',
+            async (value) => { this.plugin.settings.anthropicApiKey = value.trim(); await this.saveProviderSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('OpenAI モデル')
-            .setDesc('使用するOpenAIモデル名。')
-            .addText((text) =>
-                text
-                    .setValue(this.plugin.settings.openAIModel || 'gpt-4')
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim();
-                        if (!trimmedValue) {
-                            console.warn('OpenAIモデル名を空にすることはできません。');
-                            return;
-                        }
-                        this.plugin.settings.openAIModel = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            'Anthropic モデル',
+            '使用するAnthropicモデル名。',
+            '',
+            () => this.plugin.settings.anthropicModel || 'claude-3-sonnet-20240229',
+            async (value) => {
+                const trimmedValue = value.trim();
+                if (!trimmedValue) { console.warn('Anthropicモデル名を空にすることはできません。'); return; }
+                this.plugin.settings.anthropicModel = trimmedValue;
+                await this.saveProviderSettings();
+            },
+        );
 
-        containerEl.createEl("h4", { text: "Anthropic" });
+        // ── ポップアップUI ─────────────────────────────────────────
+        containerEl.createEl('h3', { text: 'ポップアップUI' });
 
-        new Setting(containerEl)
-            .setName('Anthropic APIキー')
-            .setDesc('Anthropic APIキーを入力してください（Claudeを使用する場合）。')
-            .addText((text) =>
-                text
-                    .setPlaceholder('ANTHROPIC_API_KEY')
-                    .setValue(this.plugin.settings.anthropicApiKey || '')
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim();
-                        this.plugin.settings.anthropicApiKey = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addDropdownSetting(
+            containerEl,
+            'ポップアップ位置',
+            '翻訳ポップアップのデフォルト位置',
+            { 'top-right': '右上', 'top-left': '左上', 'bottom-right': '右下', 'bottom-left': '左下', custom: 'カスタム' },
+            () => this.plugin.settings.popupPosition,
+            async (value) => { this.plugin.settings.popupPosition = value as never; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('Anthropic モデル')
-            .setDesc('使用するAnthropicモデル名。')
-            .addText((text) =>
-                text
-                    .setValue(this.plugin.settings.anthropicModel || 'claude-3-sonnet-20240229')
-                    .onChange(async (value) => {
-                        const trimmedValue = value.trim();
-                        if (!trimmedValue) {
-                            console.warn('Anthropicモデル名を空にすることはできません。');
-                            return;
-                        }
-                        this.plugin.settings.anthropicModel = trimmedValue;
-                        await this.saveProviderSettings();
-                    }),
-            );
+        addDropdownSetting(
+            containerEl,
+            'ポップアップテーマ',
+            '翻訳ポップアップのカラーテーマ',
+            { system: 'システム (自動)', dark: 'ダーク', light: 'ライト', blue: 'ブルー', green: 'グリーン' },
+            () => this.plugin.settings.popupTheme,
+            async (value) => { this.plugin.settings.popupTheme = value as never; await this.plugin.saveSettings(); },
+        );
 
-        containerEl.createEl("h3", { text: "ポップアップUI" });
+        addDropdownSetting(
+            containerEl,
+            'フォントサイズ',
+            'ポップアップ内のテキストフォントサイズ',
+            { small: '小', medium: '中', large: '大' },
+            () => this.plugin.settings.fontSize,
+            async (value) => { this.plugin.settings.fontSize = value as never; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('ポップアップ位置')
-            .setDesc('翻訳ポップアップのデフォルト位置')
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption('top-right', '右上')
-                    .addOption('top-left', '左上')
-                    .addOption('bottom-right', '右下')
-                    .addOption('bottom-left', '左下')
-                    .addOption('custom', 'カスタム')
-                    .setValue(this.plugin.settings.popupPosition)
-                    .onChange(async (value) => {
-                        this.plugin.settings.popupPosition = value as any;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addSliderSetting(
+            containerEl,
+            'ポップアップ背景の不透明度',
+            '値が小さいほど透明になります。',
+            0, 1, 0.05,
+            () => this.plugin.settings.popupBackgroundColorAlpha,
+            async (value) => {
+                if (value < 0 || value > 1) { console.warn('不透明度は0から1の間である必要があります。'); return; }
+                this.plugin.settings.popupBackgroundColorAlpha = value;
+                this.plugin.updatePopupBackgroundColorAlpha();
+                await this.plugin.saveSettings();
+            },
+        );
 
-        new Setting(containerEl)
-            .setName('ポップアップテーマ')
-            .setDesc('翻訳ポップアップのカラーテーマ')
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption('system', 'システム (自動)')
-                    .addOption('dark', 'ダーク')
-                    .addOption('light', 'ライト')
-                    .addOption('blue', 'ブルー')
-                    .addOption('green', 'グリーン')
-                    .setValue(this.plugin.settings.popupTheme)
-                    .onChange(async (value) => {
-                        this.plugin.settings.popupTheme = value as any;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addToggleSetting(
+            containerEl,
+            '原文を表示',
+            '翻訳結果と一緒に原文を表示する',
+            () => this.plugin.settings.showOriginalText,
+            async (value) => { this.plugin.settings.showOriginalText = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('フォントサイズ')
-            .setDesc('ポップアップ内のテキストフォントサイズ')
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption('small', '小')
-                    .addOption('medium', '中')
-                    .addOption('large', '大')
-                    .setValue(this.plugin.settings.fontSize)
-                    .onChange(async (value) => {
-                        this.plugin.settings.fontSize = value as any;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addToggleSetting(
+            containerEl,
+            '自動でポップアップを展開',
+            '翻訳時に自動でポップアップを展開する',
+            () => this.plugin.settings.autoExpandPopup,
+            async (value) => { this.plugin.settings.autoExpandPopup = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('ポップアップ背景の不透明度')
-            .setDesc('値が小さいほど透明になります。')
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setDynamicTooltip()
-                    .setValue(this.plugin.settings.popupBackgroundColorAlpha)
-                    .onChange(async (value) => {
-                        // Validate alpha value
-                        if (value < 0 || value > 1) {
-                            console.warn('不透明度は0から1の間である必要があります。');
-                            return;
-                        }
-                        this.plugin.settings.popupBackgroundColorAlpha = value;
-                        this.plugin.updatePopupBackgroundColorAlpha();
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        // ── 高度な設定 ─────────────────────────────────────────────
+        containerEl.createEl('h3', { text: '高度な設定' });
 
-        new Setting(containerEl)
-            .setName('原文を表示')
-            .setDesc('翻訳結果と一緒に原文を表示する')
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showOriginalText).onChange(async (value) => {
-                    this.plugin.settings.showOriginalText = value;
-                    await this.plugin.saveSettings();
-                }),
-            );
+        addSliderSetting(
+            containerEl,
+            '温度',
+            'モデル出力のランダム性を制御する値（0.0〜2.0）。低い値ほど決定的になります。',
+            0, 2, 0.05,
+            () => this.plugin.settings.temperature ?? 0.7,
+            async (value) => {
+                if (value < 0 || value > 2) { console.warn('温度は0から2の間である必要があります。'); return; }
+                this.plugin.settings.temperature = value;
+                await this.plugin.saveSettings();
+            },
+        );
 
-        new Setting(containerEl)
-            .setName('自動でポップアップを展開')
-            .setDesc('翻訳時に自動でポップアップを展開する')
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.autoExpandPopup).onChange(async (value) => {
-                    this.plugin.settings.autoExpandPopup = value;
-                    await this.plugin.saveSettings();
-                }),
-            );
+        addTextSetting(
+            containerEl,
+            '最大出力トークン',
+            '翻訳結果の最大トークン数（単語数ではありません）。',
+            '',
+            () => String(this.plugin.settings.maxOutputTokens),
+            async (value) => {
+                const parsed = Number(value);
+                if (!Number.isFinite(parsed) || parsed <= 0) { console.warn('最大出力トークンは正の数値である必要があります。'); return; }
+                this.plugin.settings.maxOutputTokens = parsed;
+                await this.plugin.saveSettings();
+            },
+        );
 
-        containerEl.createEl("h3", { text: "高度な設定" });
+        addTextSetting(
+            containerEl,
+            'タイムアウト (ミリ秒)',
+            '翻訳API呼び出しのタイムアウト時間（ミリ秒）。0に設定するとタイムアウトなし。',
+            '',
+            () => String(this.plugin.settings.timeoutMs ?? 30000),
+            async (value) => {
+                const parsed = Number(value);
+                if (!Number.isFinite(parsed) || parsed < 0) { console.warn('タイムアウトは0以上の数値である必要があります。'); return; }
+                this.plugin.settings.timeoutMs = parsed;
+                await this.plugin.saveSettings();
+            },
+        );
 
-        new Setting(containerEl)
-            .setName('温度')
-            .setDesc('モデル出力のランダム性を制御する値（0.0〜2.0）。低い値ほど決定的になります。')
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 2, 0.05)
-                    .setDynamicTooltip()
-                    .setValue(this.plugin.settings.temperature ?? 0.7)
-                    .onChange(async (value) => {
-                        if (value < 0 || value > 2) {
-                            console.warn('温度は0から2の間である必要があります。');
-                            return;
-                        }
-                        this.plugin.settings.temperature = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addTextAreaSetting(
+            containerEl,
+            'システム指示',
+            'モデルに与える前提指示や翻訳スタイルを記述します。',
+            6, 50,
+            () => this.plugin.settings.systemInstruction ?? DEFAULT_SETTINGS.systemInstruction,
+            async (value) => { this.plugin.settings.systemInstruction = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('最大出力トークン')
-            .setDesc('翻訳結果の最大トークン数（単語数ではありません）。')
-            .addText((text) =>
-                text
-                    .setValue(String(this.plugin.settings.maxOutputTokens))
-                    .onChange(async (value) => {
-                        const parsed = Number(value);
-                        // Validate token number
-                        if (!Number.isFinite(parsed) || parsed <= 0) {
-                            console.warn('最大出力トークンは正の数値である必要があります。');
-                            return;
-                        }
-                        this.plugin.settings.maxOutputTokens = parsed;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addTextAreaSetting(
+            containerEl,
+            '翻訳プロンプトテンプレート',
+            '翻訳に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
+            8, 50,
+            () => this.plugin.settings.translationPromptTemplate ?? DEFAULT_SETTINGS.translationPromptTemplate,
+            async (value) => { this.plugin.settings.translationPromptTemplate = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('タイムアウト (ミリ秒)')
-            .setDesc('翻訳API呼び出しのタイムアウト時間（ミリ秒）。0に設定するとタイムアウトなし。')
-            .addText((text) =>
-                text
-                    .setValue(String(this.plugin.settings.timeoutMs ?? 30000))
-                    .onChange(async (value) => {
-                        const parsed = Number(value);
-                        if (!Number.isFinite(parsed) || parsed < 0) {
-                            console.warn('タイムアウトは0以上の数値である必要があります。');
-                            return;
-                        }
-                        this.plugin.settings.timeoutMs = parsed;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addTextAreaSetting(
+            containerEl,
+            '辞書プロンプトテンプレート',
+            '辞書検索に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
+            8, 50,
+            () => this.plugin.settings.dictionaryPromptTemplate ?? DEFAULT_SETTINGS.dictionaryPromptTemplate,
+            async (value) => { this.plugin.settings.dictionaryPromptTemplate = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('システム指示')
-            .setDesc('モデルに与える前提指示や翻訳スタイルを記述します。')
-            .addTextArea((textArea) => {
-                textArea
-                    .setValue(
-                        this.plugin.settings.systemInstruction ??
-                            DEFAULT_SETTINGS.systemInstruction,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.systemInstruction = value;
-                        await this.plugin.saveSettings();
-                    });
-                textArea.inputEl.rows = 6;
-                textArea.inputEl.cols = 50;
-            });
+        // ── 翻訳履歴 ───────────────────────────────────────────────
+        containerEl.createEl('h3', { text: '翻訳履歴' });
 
-        new Setting(containerEl)
-            .setName('翻訳プロンプトテンプレート')
-            .setDesc(
-                '翻訳に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
-            )
-            .addTextArea((textArea) => {
-                textArea
-                    .setValue(
-                        this.plugin.settings.translationPromptTemplate ??
-                            DEFAULT_SETTINGS.translationPromptTemplate,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.translationPromptTemplate = value;
-                        await this.plugin.saveSettings();
-                    });
-                textArea.inputEl.rows = 8;
-                textArea.inputEl.cols = 50;
-            });
+        addToggleSetting(
+            containerEl,
+            '翻訳履歴を有効にする',
+            '翻訳結果を履歴に保存し、同じテキストが翻訳された際にキャッシュを使用します。',
+            () => this.plugin.settings.enableTranslationHistory,
+            async (value) => { this.plugin.settings.enableTranslationHistory = value; await this.plugin.saveSettings(); },
+        );
 
-        new Setting(containerEl)
-            .setName('辞書プロンプトテンプレート')
-            .setDesc(
-                '辞書検索に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
-            )
-            .addTextArea((textArea) => {
-                textArea
-                    .setValue(
-                        this.plugin.settings.dictionaryPromptTemplate ??
-                            DEFAULT_SETTINGS.dictionaryPromptTemplate,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.dictionaryPromptTemplate = value;
-                        await this.plugin.saveSettings();
-                    });
-                textArea.inputEl.rows = 8;
-                textArea.inputEl.cols = 50;
-            });
-
-        containerEl.createEl("h3", { text: "翻訳履歴" });
-
-        new Setting(containerEl)
-            .setName('翻訳履歴を有効にする')
-            .setDesc('翻訳結果を履歴に保存し、同じテキストが翻訳された際にキャッシュを使用します。')
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableTranslationHistory)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableTranslationHistory = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName('最大履歴アイテム数')
-            .setDesc('保存する翻訳履歴アイテムの最大数。')
-            .addText((text) =>
-                text
-                    .setValue(String(this.plugin.settings.maxHistoryItems))
-                    .onChange(async (value) => {
-                        const parsed = Number(value);
-                        if (!Number.isFinite(parsed) || parsed <= 0) {
-                            console.warn('最大履歴アイテム数は正の数値である必要があります。');
-                            return;
-                        }
-                        this.plugin.settings.maxHistoryItems = parsed;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        addTextSetting(
+            containerEl,
+            '最大履歴アイテム数',
+            '保存する翻訳履歴アイテムの最大数。',
+            '',
+            () => String(this.plugin.settings.maxHistoryItems),
+            async (value) => {
+                const parsed = Number(value);
+                if (!Number.isFinite(parsed) || parsed <= 0) { console.warn('最大履歴アイテム数は正の数値である必要があります。'); return; }
+                this.plugin.settings.maxHistoryItems = parsed;
+                await this.plugin.saveSettings();
+            },
+        );
     }
 }

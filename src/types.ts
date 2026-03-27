@@ -123,3 +123,10 @@ export interface TranslationHistoryItem {
 export interface TranslationHistory {
     items: TranslationHistoryItem[];
 }
+
+export type MarkdownBlock =
+    | { type: 'heading'; level: number; text: string }
+    | { type: 'paragraph'; lines: string[] }
+    | { type: 'list'; ordered: boolean; items: string[] }
+    | { type: 'blockquote'; lines: string[] }
+    | { type: 'code'; language: string; lines: string[] };
