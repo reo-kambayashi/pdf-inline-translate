@@ -83,7 +83,7 @@ mitigate
     popupWidth: 420,
     popupHeight: 320,
     popupPosition: 'top-right',
-    popupTheme: 'default',
+    popupTheme: 'system',
     fontSize: 'medium',
     showOriginalText: false,
     autoExpandPopup: false,
@@ -133,7 +133,7 @@ export const ERROR_MESSAGES = {
 // UI status message constants
 export const UI_STATUS_MESSAGES = {
     LOADING: 'Geminiに問い合わせ中…',
-    PENDING: '翻訳を開始するには「A あ」アイコンをクリックしてください。',
+    PENDING: '翻訳を開始するにはボタンをクリックしてください。',
     CANCELLED: '翻訳を中断しました。',
     ERROR_DEFAULT: '翻訳に失敗しました。詳細はコンソールをご確認ください。',
     ERROR_API_KEY: 'APIキーが設定されていません。設定を確認してください。',

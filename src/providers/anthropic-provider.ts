@@ -1,6 +1,6 @@
 import { BaseTranslationProvider } from '../base-translation-provider';
-import { TranslationResult, TranslationProvider } from './translation-provider';
-import { TranslationContext } from './types';
+import { TranslationResult, TranslationProvider } from '../translation-provider';
+import { TranslationContext } from '../types';
 
 export class AnthropicTranslationProvider
     extends BaseTranslationProvider
@@ -110,7 +110,7 @@ export class AnthropicTranslationProvider
                 model: this.model,
             };
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (error instanceof Error && error.name === 'AbortError') {
                 return {
                     text: '',
                     success: false,
@@ -118,10 +118,15 @@ export class AnthropicTranslationProvider
                 };
             }
 
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'Unknown error occurred during translation';
+
             return {
                 text: '',
                 success: false,
-                error: error.message || 'Unknown error occurred during translation',
+                error: message,
             };
         }
     }

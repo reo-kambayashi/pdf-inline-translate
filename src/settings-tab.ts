@@ -10,6 +10,11 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    private async saveProviderSettings() {
+        await this.plugin.saveSettings();
+        this.plugin.refreshTranslationProviders();
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -71,7 +76,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.translationProvider)
                     .onChange(async (value) => {
                         this.plugin.settings.translationProvider = value as any;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -91,7 +96,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                             console.warn('APIキーの形式が正しくない可能性があります。');
                         }
                         this.plugin.settings.apiKey = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -110,7 +115,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                             return;
                         }
                         this.plugin.settings.model = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -126,7 +131,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         const trimmedValue = value.trim();
                         this.plugin.settings.openAIApiKey = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -143,7 +148,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                             return;
                         }
                         this.plugin.settings.openAIModel = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -159,7 +164,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         const trimmedValue = value.trim();
                         this.plugin.settings.anthropicApiKey = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -176,7 +181,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
                             return;
                         }
                         this.plugin.settings.anthropicModel = trimmedValue;
-                        await this.plugin.saveSettings();
+                        await this.saveProviderSettings();
                     }),
             );
 
@@ -204,7 +209,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             .setDesc('翻訳ポップアップのカラーテーマ')
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption('default', 'デフォルト')
+                    .addOption('system', 'システム (自動)')
                     .addOption('dark', 'ダーク')
                     .addOption('light', 'ライト')
                     .addOption('blue', 'ブルー')

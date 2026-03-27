@@ -39,33 +39,25 @@ export class GeminiClient {
 
         const normalizedKey = text.trim().toLowerCase();
 
-        let classification: 'dictionary' | 'translation';
-
-        if (this.classificationCache.has(normalizedKey)) {
-            classification = this.classificationCache.get(normalizedKey)!;
-        } else {
-            classification = await this.classifyTranslationMode(text, context, abortSignal);
-        }
-
         if (this.historyManager) {
             let cachedResult = this.historyManager.findCachedTranslation(
                 text,
                 this.settings.targetLanguage,
-                { isDictionary: classification === 'dictionary' },
             );
-
-            if (!cachedResult) {
-                cachedResult = this.historyManager.findCachedTranslation(
-                    text,
-                    this.settings.targetLanguage,
-                );
-            }
 
             if (cachedResult) {
                 const cachedClassification = cachedResult.isDictionary ? 'dictionary' : 'translation';
                 this.classificationCache.set(normalizedKey, cachedClassification);
                 return cachedResult.translation;
             }
+        }
+
+        let classification: 'dictionary' | 'translation';
+
+        if (this.classificationCache.has(normalizedKey)) {
+            classification = this.classificationCache.get(normalizedKey)!;
+        } else {
+            classification = await this.classifyTranslationMode(text, context, abortSignal);
         }
 
         const timeoutMs = this.settings.timeoutMs || 30000;

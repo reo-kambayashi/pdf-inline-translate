@@ -13,7 +13,6 @@ import {
 } from './ui/translation-history-view';
 import { TranslationProviderManager } from './translation-provider-manager';
 import { BatchTranslationService } from './batch-translation-service';
-import { splitTextForBatch } from './utils';
 import { registerCommands } from './commands';
 
 declare global {
@@ -148,6 +147,10 @@ export default class PdfInlineTranslatePlugin extends Plugin {
             ...this.settings,
             translationHistory: this.translationHistory,
         });
+    }
+
+    refreshTranslationProviders() {
+        this.providerManager.refreshProviders();
     }
 
     updatePopupBackgroundColorAlpha() {

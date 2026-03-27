@@ -185,15 +185,17 @@ export function reportError(message: string, error: any, context?: string): void
 
 // Validation utilities
 export function isValidApiKey(key: string): boolean {
-    return key && typeof key === 'string' && key.trim().length > 0 && key.startsWith('AIza');
+    return Boolean(
+        typeof key === 'string' && key.trim().length > 0 && key.startsWith('AIza'),
+    );
 }
 
 export function isValidModelName(name: string): boolean {
-    return name && typeof name === 'string' && name.trim().length > 0;
+    return Boolean(typeof name === 'string' && name.trim().length > 0);
 }
 
 export function isValidTargetLanguage(lang: string): boolean {
-    return lang && typeof lang === 'string' && lang.trim().length > 0;
+    return Boolean(typeof lang === 'string' && lang.trim().length > 0);
 }
 
 // String utility

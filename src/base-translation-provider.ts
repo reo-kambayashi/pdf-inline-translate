@@ -16,7 +16,7 @@ export abstract class BaseTranslationProvider implements TranslationProvider {
     ): Promise<TranslationResult>;
 
     isConfigured(): boolean {
-        return this.apiKey && this.apiKey.length > 0 && this.model && this.model.length > 0;
+        return Boolean(this.apiKey.length > 0 && this.model.length > 0);
     }
 
     getName(): string {

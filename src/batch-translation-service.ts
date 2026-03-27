@@ -92,8 +92,6 @@ export class BatchTranslationService {
                         item.translated = result.text;
                         item.status = 'completed';
                         job.results.push(result);
-
-                        // Add to history
                         this.historyManager.addToHistory(
                             item.text,
                             result.text,
@@ -106,7 +104,8 @@ export class BatchTranslationService {
                         item.status = 'failed';
                     }
                 } catch (error) {
-                    item.error = error.message || 'Translation failed';
+                    item.error =
+                        error instanceof Error ? error.message : 'Translation failed';
                     item.status = 'failed';
                 } finally {
                     completedItems++;

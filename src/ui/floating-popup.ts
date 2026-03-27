@@ -41,15 +41,11 @@ export class GeminiTranslationFloatingPopup {
     private boundOnKeydown: (event: KeyboardEvent) => void;
     private boundOnDrag: (event: PointerEvent) => void;
     private boundOnDragEnd: (event: PointerEvent) => void;
-    private collapsedIconUrl: string | null;
-
     constructor(plugin: PdfInlineTranslatePlugin) {
         this.plugin = plugin;
         this.boundOnKeydown = this.handleKeydown.bind(this);
         this.boundOnDrag = this.onDrag.bind(this);
         this.boundOnDragEnd = this.onDragEnd.bind(this);
-        this.collapsedIconUrl =
-            typeof plugin?.getAssetUrl === 'function' ? plugin.getAssetUrl('fig/39358.png') : null;
     }
 
     setCloseHandler(handler: () => void) {
@@ -372,16 +368,7 @@ export class GeminiTranslationFloatingPopup {
         const icon = document.createElement('span');
         icon.className = 'pdf-inline-translate__collapsed-icon';
         icon.setAttribute('aria-hidden', 'true');
-        if (
-            this.collapsedIconUrl &&
-            typeof this.collapsedIconUrl === 'string' &&
-            this.collapsedIconUrl.length > 0
-        ) {
-            icon.style.backgroundImage = `url("${this.collapsedIconUrl}")`;
-        } else {
-            icon.classList.add('pdf-inline-translate__collapsed-icon--fallback');
-            icon.textContent = '訳';
-        }
+        icon.textContent = '訳';
         button.appendChild(icon);
 
         container.appendChild(button);
@@ -457,12 +444,10 @@ export class GeminiTranslationFloatingPopup {
     applyTheme() {
         if (!this.container) return;
 
-        // Apply theme classes based on settings
-        const theme = this.plugin.settings.popupTheme;
         const fontSize = this.plugin.settings.fontSize;
 
-        // Remove existing theme classes
         this.container.classList.remove(
+            'pdf-inline-translate__theme-system',
             'pdf-inline-translate__theme-default',
             'pdf-inline-translate__theme-dark',
             'pdf-inline-translate__theme-light',
@@ -473,13 +458,14 @@ export class GeminiTranslationFloatingPopup {
             'pdf-inline-translate__font-large',
         );
 
-        // Add theme class
+        const theme = this.plugin.settings.popupTheme;
         this.container.classList.add(`pdf-inline-translate__theme-${theme}`);
         this.container.classList.add(`pdf-inline-translate__font-${fontSize}`);
 
-        // Apply size if container exists
         if (this.container && this.isExpanded) {
             this.container.classList.add('pdf-inline-translate__popup--autosize');
+        } else if (this.container) {
+            this.container.classList.remove('pdf-inline-translate__popup--autosize');
         }
     }
 

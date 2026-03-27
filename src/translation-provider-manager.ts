@@ -18,6 +18,9 @@ export class TranslationProviderManager {
     }
 
     private initializeProviders(): void {
+        this.providers.clear();
+        this.currentProvider = null;
+
         // Initialize Gemini provider (always available)
         const geminiClient = new GeminiClient(this.settings, this.historyManager);
         this.providers.set('gemini', {
@@ -35,10 +38,14 @@ export class TranslationProviderManager {
                         model: this.settings.model,
                     };
                 } catch (error) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : 'Unknown error occurred during translation';
                     return {
                         text: '',
                         success: false,
-                        error: error.message || 'Unknown error occurred during translation',
+                        error: message,
                     };
                 }
             },
@@ -74,6 +81,10 @@ export class TranslationProviderManager {
             this.providers.get(this.settings.translationProvider) ||
             this.providers.get('gemini') ||
             null;
+    }
+
+    refreshProviders(): void {
+        this.initializeProviders();
     }
 
     getProvider(providerName?: string): TranslationProvider | null {

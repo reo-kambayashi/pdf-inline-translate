@@ -26,7 +26,7 @@ export interface PdfInlineTranslatePluginSettings {
     popupWidth: number;
     popupHeight: number;
     popupPosition: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
-    popupTheme: 'default' | 'dark' | 'light' | 'blue' | 'green';
+    popupTheme: 'system' | 'default' | 'dark' | 'light' | 'blue' | 'green';
     fontSize: 'small' | 'medium' | 'large';
     showOriginalText: boolean;
     autoExpandPopup: boolean;

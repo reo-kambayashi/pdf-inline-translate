@@ -87,6 +87,10 @@ export class SelectionManager {
     }
 
     scheduleAutoTranslateCheck(delay: number = AUTO_TRANSLATE_DEBOUNCE_MS) {
+        if (!this.plugin.settings.enableAutoTranslate) {
+            this.cancelAutoTranslateTimer();
+            return;
+        }
         if (this.ignoreNextSelectionCheck) {
             return;
         }
@@ -148,6 +152,10 @@ export class SelectionManager {
     }
 
     handleSelectionForAutoTranslate() {
+        if (!this.plugin.settings.enableAutoTranslate) {
+            this.cancelAutoTranslateTimer();
+            return;
+        }
         if (this.isPointerSelecting) {
             this.scheduleAutoTranslateCheck();
             return;

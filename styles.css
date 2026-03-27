@@ -1,812 +1,602 @@
 /* ==========================================================================
-   カラートークン
+   Appearance Tokens
    ========================================================================== */
 
 :root {
-	--pdf-inline-translate-surface: #0f172a;
-	--pdf-inline-translate-surface-strong: #020617;
-	--pdf-inline-translate-surface-muted: #1e293b;
-	--pdf-inline-translate-border: #1e3a8a;
-	--pdf-inline-translate-border-strong: #3b82f6;
-	--pdf-inline-translate-muted: #94a3b8;
-	--pdf-inline-translate-accent: #3b82f6;
-	--pdf-inline-translate-accent-soft: color-mix(in srgb, #3b82f6 18%, transparent);
-	--pdf-inline-translate-positive: color-mix(in srgb, var(--color-green, #3fb950) 40%, #3b82f6 60%);
-	--pdf-inline-translate-critical: color-mix(in srgb, var(--color-red, #f85149) 45%, #3b82f6 55%);
-	--pdf-inline-translate-warning: color-mix(in srgb, var(--color-orange, #ff9f1c) 45%, #3b82f6 55%);
-}
-
-body:not(.theme-dark) {
-	--pdf-inline-translate-surface: #f8fafc;
-	--pdf-inline-translate-surface-strong: #eef2ff;
-	--pdf-inline-translate-surface-muted: #e2e8f0;
-	--pdf-inline-translate-border: #bfdbfe;
-	--pdf-inline-translate-border-strong: #2563eb;
-	--pdf-inline-translate-muted: #475569;
-	--pdf-inline-translate-accent: #2563eb;
-	--pdf-inline-translate-accent-soft: color-mix(in srgb, #2563eb 22%, transparent);
-	--pdf-inline-translate-positive: color-mix(in srgb, var(--color-green, #16a34a) 50%, #2563eb 50%);
-	--pdf-inline-translate-critical: color-mix(in srgb, var(--color-red, #ef4444) 55%, #2563eb 45%);
-	--pdf-inline-translate-warning: color-mix(in srgb, var(--color-orange, #f97316) 55%, #2563eb 45%);
+    --pdf-inline-translate-popup-bg: var(--background-primary, #ffffff);
+    --pdf-inline-translate-surface: var(--background-secondary, #f5f6f8);
+    --pdf-inline-translate-surface-hover: var(--background-modifier-hover, rgba(0, 0, 0, 0.06));
+    --pdf-inline-translate-border: var(--background-modifier-border, rgba(0, 0, 0, 0.12));
+    --pdf-inline-translate-border-strong: var(--background-modifier-border-hover, rgba(0, 0, 0, 0.18));
+    --pdf-inline-translate-text: var(--text-normal, #1f2328);
+    --pdf-inline-translate-text-muted: var(--text-muted, #5c6470);
+    --pdf-inline-translate-text-faint: var(--text-faint, #7d8590);
+    --pdf-inline-translate-accent: var(--text-accent, var(--interactive-accent, #4f46e5));
+    --pdf-inline-translate-accent-hover: var(
+        --interactive-accent-hover,
+        var(--interactive-accent, #4338ca)
+    );
+    --pdf-inline-translate-success: var(--color-green, #2f9e44);
+    --pdf-inline-translate-warning: var(--color-orange, #d97706);
+    --pdf-inline-translate-error: var(--color-red, #dc2626);
+    --pdf-inline-translate-shadow: var(--shadow-s, 0 8px 24px rgba(15, 23, 42, 0.12));
+    --pdf-inline-translate-radius: 10px;
+    --pdf-inline-translate-font-size: 14px;
+    --pdf-inline-translate-line-height: 1.6;
 }
 
 /* ==========================================================================
-   汎用スタイル & パネルUI
+   Shared Styles
    ========================================================================== */
 
 .pdf-inline-translate__section {
-	margin-bottom: 0.5rem;
-	font-size: 0.8rem;
-	color: var(--pdf-inline-translate-muted);
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--pdf-inline-translate-text-muted);
 }
 
-
 .pdf-inline-translate__status {
-	margin: 0.25rem 0;
-	font-style: italic;
-	font-size: 0.8rem;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 .pdf-inline-translate__buttons {
-	display: flex;
-	gap: 0.5rem;
-	justify-content: flex-end;
-	margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
 }
 
-/* サイドパネル表示用のスタイル（現在は未使用） */
+.pdf-inline-translate__buttons .mod-cta {
+    min-width: 5rem;
+}
+
 .pdf-inline-translate__panel-view {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	padding: 1rem;
-	overflow: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1rem;
+    overflow: auto;
 }
 
 .pdf-inline-translate__panel-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .pdf-inline-translate__panel-empty {
-	padding: 1rem;
-	color: var(--pdf-inline-translate-muted);
+    padding: 1rem;
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 /* ==========================================================================
-   フローティング・ポップアップ
+   Floating Popup
    ========================================================================== */
 
-/* --- コンテナ基本スタイル --- */
 .pdf-inline-translate__popup {
-	position: fixed;
-	/* top/left はJSで動的に設定 */
-	display: none; /* 通常は非表示 */
-	flex-direction: column;
-	padding: 0.5rem;
-	border: 1px solid var(--pdf-inline-translate-border);
-	box-shadow: var(--shadow-l, 0 8px 24px rgba(0, 0, 0, 0.22));
-	border-radius: 0.5rem;
-	z-index: 1000;
-	gap: 0.5rem;
-	background: var(--pdf-inline-translate-surface-strong);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
+    position: fixed;
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(32rem, calc(100vw - 1.5rem));
+    padding: 0.875rem;
+    border: 1px solid var(--pdf-inline-translate-border);
+    border-radius: var(--pdf-inline-translate-radius);
+    background: var(--pdf-inline-translate-popup-bg);
+    box-shadow: var(--pdf-inline-translate-shadow);
+    color: var(--pdf-inline-translate-text);
+    z-index: 1000;
+    font-size: var(--pdf-inline-translate-font-size);
+    line-height: var(--pdf-inline-translate-line-height);
 }
 
 .pdf-inline-translate__popup--autosize {
-	width: auto;
-	height: auto;
-	min-width: 300px;
-	min-height: 150px;
-	max-width: 600px;
-	max-height: 500px;
-	resize: both;
-	overflow: auto;
+    min-width: 19rem;
+    min-height: 10rem;
+    max-width: min(40rem, calc(100vw - 1.5rem));
+    max-height: min(38rem, calc(100vh - 1.5rem));
+    resize: both;
+    overflow: auto;
 }
-
-.pdf-inline-translate__popup[data-popup-state="loading"] {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 55%,
-		var(--pdf-inline-translate-border) 45%
-	);
-}
-
-.pdf-inline-translate__popup[data-popup-state="result"] {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-positive) 60%,
-		var(--pdf-inline-translate-border) 40%
-	);
-}
-
-.pdf-inline-translate__popup[data-popup-state="error"] {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-critical) 65%,
-		var(--pdf-inline-translate-border) 35%
-	);
-}
-
-.pdf-inline-translate__popup[data-popup-state="cancelled"] {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-warning) 60%,
-		var(--pdf-inline-translate-border) 40%
-	);
-}
-
-/* 黒背景の時の文字色を調整 */
-.theme-dark .pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__status,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__status,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__status,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__status,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__translation-text,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__translation-text,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__translation-text,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__translation-text,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="loading"] .pdf-inline-translate__popup-close,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="result"] .pdf-inline-translate__popup-close,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="error"] .pdf-inline-translate__popup-close,
-.theme-dark .pdf-inline-translate__popup[data-popup-state="cancelled"] .pdf-inline-translate__popup-close {
-	color: var(--text-normal);
-}
-
 
 .pdf-inline-translate__popup.is-dragging {
-	cursor: grabbing;
+    cursor: grabbing;
 }
 
-/* --- ポップアップヘッダー --- */
+.pdf-inline-translate__popup.pdf-inline-translate__font-small {
+    --pdf-inline-translate-font-size: 13px;
+}
+
+.pdf-inline-translate__popup.pdf-inline-translate__font-medium {
+    --pdf-inline-translate-font-size: 14px;
+}
+
+.pdf-inline-translate__popup.pdf-inline-translate__font-large {
+    --pdf-inline-translate-font-size: 15px;
+}
+
+/* system / default: inherits Obsidian's CSS vars — no override needed */
+
+.pdf-inline-translate__popup.pdf-inline-translate__theme-dark {
+    --pdf-inline-translate-popup-bg: #1e1e2e;
+    --pdf-inline-translate-surface: #2a2a3d;
+    --pdf-inline-translate-surface-hover: rgba(255, 255, 255, 0.06);
+    --pdf-inline-translate-border: rgba(255, 255, 255, 0.1);
+    --pdf-inline-translate-border-strong: rgba(255, 255, 255, 0.18);
+    --pdf-inline-translate-text: #cdd6f4;
+    --pdf-inline-translate-text-muted: #a6adc8;
+    --pdf-inline-translate-text-faint: #7f849c;
+    --pdf-inline-translate-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.pdf-inline-translate__popup.pdf-inline-translate__theme-light {
+    --pdf-inline-translate-popup-bg: #ffffff;
+    --pdf-inline-translate-surface: #f5f6f8;
+    --pdf-inline-translate-surface-hover: rgba(0, 0, 0, 0.06);
+    --pdf-inline-translate-border: rgba(0, 0, 0, 0.12);
+    --pdf-inline-translate-border-strong: rgba(0, 0, 0, 0.18);
+    --pdf-inline-translate-text: #1f2328;
+    --pdf-inline-translate-text-muted: #5c6470;
+    --pdf-inline-translate-text-faint: #7d8590;
+    --pdf-inline-translate-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* ==========================================================================
+   Popup Header
+   ========================================================================== */
+
 .pdf-inline-translate__popup-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	padding: 0.25rem;
-	user-select: none;
-	min-height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--pdf-inline-translate-border);
+    user-select: none;
 }
 
 .pdf-inline-translate__popup-headline {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    cursor: grab;
 }
 
 .pdf-inline-translate__popup-title {
-	font-size: 0.85rem;
-	font-weight: 600;
-	color: var(--text-normal);
-	letter-spacing: 0.01em;
-	text-transform: none;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--pdf-inline-translate-text);
+    white-space: nowrap;
 }
 
 .pdf-inline-translate__popup-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.25rem;
-	padding: 0.15rem 0.6rem;
-	border-radius: 999px;
-	font-size: 0.65rem;
-	font-weight: 600;
-	line-height: 1;
-	background: var(--pdf-inline-translate-surface-muted);
-	color: var(--pdf-inline-translate-muted);
-	transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-	cursor: default;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.5rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    background: var(--pdf-inline-translate-surface);
+    color: var(--pdf-inline-translate-text-muted);
+    font-size: 0.72em;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .pdf-inline-translate__popup-badge::before {
-	content: "";
-	display: block;
-	width: 0.35rem;
-	height: 0.35rem;
-	border-radius: 999px;
-	background: currentColor;
-	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.8;
 }
 
-.pdf-inline-translate__popup-badge[data-state="loading"] {
-	background: var(--pdf-inline-translate-accent-soft);
-	color: var(--pdf-inline-translate-accent);
+.pdf-inline-translate__popup-badge[data-state="loading"],
+.pdf-inline-translate__popup-badge[data-state="pending"] {
+    color: var(--pdf-inline-translate-accent);
 }
 
 .pdf-inline-translate__popup-badge[data-state="result"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-positive) 20%,
-		transparent
-	);
-	color: var(--pdf-inline-translate-positive);
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 .pdf-inline-translate__popup-badge[data-state="error"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-critical) 18%,
-		transparent
-	);
-	color: var(--pdf-inline-translate-critical);
+    color: var(--pdf-inline-translate-error);
 }
 
 .pdf-inline-translate__popup-badge[data-state="cancelled"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-warning) 20%,
-		transparent
-	);
-	color: var(--pdf-inline-translate-warning);
-}
-
-.pdf-inline-translate__popup-badge[data-state="pending"],
-.pdf-inline-translate__popup-badge[data-state="idle"] {
-	background: var(--pdf-inline-translate-surface-muted);
-	color: var(--pdf-inline-translate-muted);
+    color: var(--pdf-inline-translate-warning);
 }
 
 .pdf-inline-translate__popup-actions {
-	display: flex;
-	align-items: center;
-	gap: 0.25rem;
-	cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .pdf-inline-translate__popup-collapse,
 .pdf-inline-translate__popup-close {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 1.75rem;
-	height: 1.75rem;
-	border-radius: 999px;
-	border: none;
-	background: transparent;
-	color: var(--pdf-inline-translate-muted);
-	font-size: 1.1rem;
-	line-height: 1;
-	cursor: pointer;
-	transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
-	padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pdf-inline-translate-text-muted);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .pdf-inline-translate__popup-collapse:hover,
 .pdf-inline-translate__popup-close:hover {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
+    background: var(--pdf-inline-translate-surface);
+    border-color: var(--pdf-inline-translate-border);
+    color: var(--pdf-inline-translate-text);
 }
 
-.pdf-inline-translate__popup-collapse:active,
-.pdf-inline-translate__popup-close:active {
-	transform: scale(0.95);
-}
+/* ==========================================================================
+   Popup Body
+   ========================================================================== */
 
-/* --- ポップアップボディ --- */
 .pdf-inline-translate__popup-body {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-	overflow: auto;
-	min-height: 0;
-	padding: 0 0.25rem 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    min-height: 0;
+}
+
+.pdf-inline-translate__original-section,
+.pdf-inline-translate__translation {
+    border: 1px solid var(--pdf-inline-translate-border);
+    border-radius: 8px;
+    background: var(--pdf-inline-translate-surface);
 }
 
 .pdf-inline-translate__original-section {
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-	padding: 0.5rem 0.75rem;
-	border-radius: 0.45rem;
-	border: 1px solid var(--pdf-inline-translate-border);
-	background: var(--pdf-inline-translate-surface);
-	transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.625rem 0.75rem;
 }
 
 .pdf-inline-translate__original-section[hidden] {
-	display: none;
+    display: none;
 }
 
 .pdf-inline-translate__original-section.is-expanded {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 45%,
-		var(--pdf-inline-translate-border) 55%
-	);
-	box-shadow: inset 0 0 0 1px var(--pdf-inline-translate-accent-soft);
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 6%,
-		var(--pdf-inline-translate-surface) 94%
-	);
+    border-color: var(--pdf-inline-translate-border-strong);
 }
 
 .pdf-inline-translate__original-toggle {
-	align-self: flex-start;
-	font-size: 0.7rem;
-	font-weight: 600;
-	border: none;
-	background: none;
-	color: var(--pdf-inline-translate-accent);
-	cursor: pointer;
-	padding: 0;
-	text-decoration: underline;
-	text-underline-offset: 0.2rem;
-	transition: color 0.2s ease, opacity 0.2s ease;
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--pdf-inline-translate-accent);
+    font-size: 0.78em;
+    font-weight: 500;
+    cursor: pointer;
 }
 
 .pdf-inline-translate__original-toggle:hover {
-	color: var(--pdf-inline-translate-border-strong);
+    color: var(--pdf-inline-translate-accent-hover);
 }
 
 .pdf-inline-translate__original-toggle[disabled] {
-	color: var(--text-faint);
-	cursor: not-allowed;
-	text-decoration: none;
-	opacity: 0.65;
+    color: var(--pdf-inline-translate-text-faint);
+    cursor: not-allowed;
 }
 
 .pdf-inline-translate__original {
-	margin: 0;
-	max-height: 6rem;
-	overflow: auto;
-	white-space: pre-wrap;
-	font-size: 0.75rem;
-	line-height: 1.5;
-	font-family: "Hiragino Sans", "Meiryo", "Noto Sans JP", "Segoe UI", sans-serif;
-	color: var(--pdf-inline-translate-muted);
-	letter-spacing: 0.01em;
+    margin: 0;
+    max-height: 7rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    color: var(--pdf-inline-translate-text-muted);
+    font-size: 0.86em;
+    line-height: 1.6;
+    font-family: var(--font-text, "Hiragino Sans", "Meiryo", sans-serif);
 }
 
 .pdf-inline-translate__original[hidden] {
-	display: none;
-}
-
-.pdf-inline-translate__original-section.is-expanded .pdf-inline-translate__original {
-	color: var(--text-normal);
+    display: none;
 }
 
 .pdf-inline-translate__translation {
-	flex: 1 1 auto;
-	overflow: auto;
-	padding: 0.75rem;
-	border-radius: 0.5rem;
-	background: var(--pdf-inline-translate-surface);
-	border: 1px solid var(--pdf-inline-translate-border);
-	color: var(--text-normal);
-	max-height: 48vh;
-	transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    flex: 1 1 auto;
+    min-height: 8rem;
+    max-height: 48vh;
+    overflow: auto;
+    padding: 0.875rem;
+    background: var(--pdf-inline-translate-popup-bg);
+    color: var(--pdf-inline-translate-text);
+}
+
+.pdf-inline-translate__translation[data-state="idle"],
+.pdf-inline-translate__translation[data-state="pending"] {
+    border-color: var(--pdf-inline-translate-border);
 }
 
 .pdf-inline-translate__translation[data-state="loading"] {
-	background: var(--pdf-inline-translate-surface-muted);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 45%,
-		var(--pdf-inline-translate-border) 55%
-	);
-}
-
-.pdf-inline-translate__translation[data-state="pending"] {
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-border-strong) 40%,
-		var(--pdf-inline-translate-border) 60%
-	);
+    border-color: var(--pdf-inline-translate-accent);
 }
 
 .pdf-inline-translate__translation[data-state="result"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-positive) 8%,
-		var(--pdf-inline-translate-surface) 92%
-	);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-positive) 55%,
-		var(--pdf-inline-translate-border) 45%
-	);
-	box-shadow: inset 0 0 0 1px color-mix(
-			in srgb,
-			var(--pdf-inline-translate-positive) 25%,
-			transparent
-		);
+    border-color: var(--pdf-inline-translate-border-strong);
 }
 
 .pdf-inline-translate__translation[data-state="error"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-critical) 10%,
-		var(--pdf-inline-translate-surface) 90%
-	);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-critical) 60%,
-		var(--pdf-inline-translate-border) 40%
-	);
+    border-color: color-mix(
+        in srgb,
+        var(--pdf-inline-translate-error) 40%,
+        var(--pdf-inline-translate-border) 60%
+    );
 }
 
 .pdf-inline-translate__translation[data-state="cancelled"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-warning) 10%,
-		var(--pdf-inline-translate-surface) 90%
-	);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-warning) 60%,
-		var(--pdf-inline-translate-border) 40%
-	);
-}
-
-.pdf-inline-translate__translation[data-state="idle"] {
-	border-color: var(--pdf-inline-translate-border);
+    border-color: color-mix(
+        in srgb,
+        var(--pdf-inline-translate-warning) 40%,
+        var(--pdf-inline-translate-border) 60%
+    );
 }
 
 .pdf-inline-translate__translation.pdf-inline-translate__translation--custom {
-	background: var(--pdf-inline-translate-surface-strong);
-	border-color: var(--pdf-inline-translate-border-strong);
-	box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
-	color: var(--text-normal);
-	backdrop-filter: blur(6px);
-	padding: 1rem;
-	gap: 0.75rem;
-	display: flex;
-	flex-direction: column;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
-.pdf-inline-translate__translation--custom[data-state="result"] {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 12%,
-		var(--pdf-inline-translate-surface-strong) 88%
-	);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-border-strong) 55%,
-		var(--pdf-inline-translate-border) 45%
-	);
-	box-shadow: 0 22px 44px rgba(0, 0, 0, 0.26);
-}
+/* ==========================================================================
+   Markdown Content
+   ========================================================================== */
 
 .pdf-inline-translate__markdown-heading {
-	margin: 0;
-	font-weight: 600;
-	color: var(--pdf-inline-translate-accent);
-	letter-spacing: 0.01em;
-	text-shadow: none;
+    margin: 0;
+    color: var(--pdf-inline-translate-text);
+    font-weight: 600;
+    line-height: 1.4;
 }
 
 .pdf-inline-translate__markdown-heading--level-1 {
-	font-size: 1.2rem;
+    font-size: 1.15em;
 }
 
 .pdf-inline-translate__markdown-heading--level-2 {
-	font-size: 1.1rem;
+    font-size: 1.05em;
 }
 
 .pdf-inline-translate__markdown-heading--level-3,
 .pdf-inline-translate__markdown-heading--level-4 {
-	font-size: 1rem;
+    font-size: 1em;
 }
 
 .pdf-inline-translate__markdown-paragraph {
-	margin: 0;
-	color: var(--text-normal);
-	line-height: 1.65;
+    margin: 0;
+    color: var(--pdf-inline-translate-text);
+    line-height: 1.7;
 }
 
 .pdf-inline-translate__markdown-placeholder {
-	color: color-mix(in srgb, var(--pdf-inline-translate-muted) 80%, var(--text-faint) 20%);
-	font-style: italic;
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 .pdf-inline-translate__markdown-list {
-	margin: 0;
-	padding-left: 1.25rem;
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-	color: var(--text-normal);
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--pdf-inline-translate-text);
 }
 
 .pdf-inline-translate__markdown-list--ordered {
-	list-style: decimal;
+    list-style: decimal;
 }
 
 .pdf-inline-translate__markdown-list:not(.pdf-inline-translate__markdown-list--ordered) {
-	list-style: disc;
+    list-style: disc;
 }
 
 .pdf-inline-translate__markdown-list-item {
-	color: inherit;
-	line-height: 1.55;
+    line-height: 1.65;
 }
 
 .pdf-inline-translate__markdown-quote {
-	margin: 0;
-	padding: 0.6rem 0.75rem;
-	border-radius: 0.6rem;
-	border-left: 3px solid color-mix(
-			in srgb,
-			var(--pdf-inline-translate-accent) 65%,
-			var(--pdf-inline-translate-border) 35%
-		);
-	background: color-mix(in srgb, var(--pdf-inline-translate-accent-soft) 45%, var(--pdf-inline-translate-surface) 55%);
-	box-shadow: inset 0 0 0 1px var(--pdf-inline-translate-accent-soft);
-	color: var(--text-normal);
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    border-left: 3px solid var(--pdf-inline-translate-border-strong);
+    background: var(--pdf-inline-translate-surface);
+    color: var(--pdf-inline-translate-text);
 }
 
 .pdf-inline-translate__markdown-quote-line {
-	margin: 0;
-	line-height: 1.6;
+    margin: 0;
+    line-height: 1.65;
 }
 
 .pdf-inline-translate__markdown-code {
-	margin: 0;
-	border-radius: 0.55rem;
-	background: color-mix(
-		in srgb,
-		var(--background-modifier-hover) 80%,
-		var(--pdf-inline-translate-surface) 20%
-	);
-	color: var(--text-normal);
-	padding: 0.75rem 0.9rem;
-	font-size: 0.9rem;
-	overflow-x: auto;
-	box-shadow: inset 0 0 0 1px var(--pdf-inline-translate-border);
+    margin: 0;
+    padding: 0.75rem 0.875rem;
+    overflow-x: auto;
+    border-radius: 6px;
+    background: var(--pdf-inline-translate-surface);
+    color: var(--pdf-inline-translate-text);
+    font-size: 0.9em;
 }
 
 .pdf-inline-translate__markdown-code code {
-	font-family: var(--font-monospace);
-	white-space: pre;
+    font-family: var(--font-monospace);
+    white-space: pre;
 }
 
 .pdf-inline-translate__markdown-paragraph code,
 .pdf-inline-translate__markdown-list-item code,
 .pdf-inline-translate__markdown-quote-line code {
-	background: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 15%,
-		var(--pdf-inline-translate-surface-strong) 85%
-	);
-	color: var(--text-normal);
-	padding: 0.1rem 0.35rem;
-	border-radius: 0.35rem;
-	font-family: var(--font-monospace);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: var(--pdf-inline-translate-surface);
+    font-family: var(--font-monospace);
 }
 
 .pdf-inline-translate__markdown-paragraph a,
 .pdf-inline-translate__markdown-list-item a,
 .pdf-inline-translate__markdown-quote-line a {
-	color: var(--pdf-inline-translate-accent);
-	text-decoration: none;
-	border-bottom: 1px solid color-mix(
-			in srgb,
-			var(--pdf-inline-translate-accent) 55%,
-			transparent
-		);
-	padding-bottom: 0.05rem;
-	transition: color 0.2s ease, border-color 0.2s ease;
+    color: var(--pdf-inline-translate-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
 }
 
 .pdf-inline-translate__markdown-paragraph a:hover,
 .pdf-inline-translate__markdown-list-item a:hover,
 .pdf-inline-translate__markdown-quote-line a:hover {
-	color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-accent) 75%,
-		var(--text-accent) 25%
-	);
-	border-color: currentColor;
+    color: var(--pdf-inline-translate-accent-hover);
 }
 
 .pdf-inline-translate__markdown-paragraph strong,
 .pdf-inline-translate__markdown-list-item strong,
-.pdf-inline-translate__markdown-quote-line strong,
+.pdf-inline-translate__markdown-quote-line strong {
+    color: var(--pdf-inline-translate-text);
+    font-weight: 600;
+}
+
 .pdf-inline-translate__markdown-paragraph em,
 .pdf-inline-translate__markdown-list-item em,
 .pdf-inline-translate__markdown-quote-line em {
-	color: var(--pdf-inline-translate-accent);
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 .pdf-inline-translate__markdown-paragraph del,
 .pdf-inline-translate__markdown-list-item del,
 .pdf-inline-translate__markdown-quote-line del {
-	color: color-mix(in srgb, var(--pdf-inline-translate-critical) 65%, var(--text-normal) 35%);
-	text-decoration-thickness: 2px;
-}
-
-.pdf-inline-translate__skeleton {
-	display: flex;
-	flex-direction: column;
-	gap: 0.45rem;
-}
-
-.pdf-inline-translate__skeleton-line {
-	height: 0.7rem;
-	border-radius: 999px;
-	width: var(--skeleton-width, 100%);
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--pdf-inline-translate-surface-muted) 65%, transparent) 0%,
-		color-mix(in srgb, var(--pdf-inline-translate-surface-muted) 90%, transparent) 50%,
-		color-mix(in srgb, var(--pdf-inline-translate-surface-muted) 65%, transparent) 100%
-	);
-	background-size: 200% 100%;
-	animation: pdf-inline-translate__skeleton 1.2s ease-in-out infinite;
-}
-
-.pdf-inline-translate__translation[data-state="loading"] .pdf-inline-translate__skeleton-line {
-	background: linear-gradient(
-		90deg,
-		color-mix(in srgb, var(--pdf-inline-translate-accent) 28%, transparent) 0%,
-		color-mix(in srgb, var(--pdf-inline-translate-accent) 45%, transparent) 50%,
-		color-mix(in srgb, var(--pdf-inline-translate-accent) 28%, transparent) 100%
-	);
-}
-
-@keyframes pdf-inline-translate__skeleton {
-	from {
-		background-position: 200% 0;
-	}
-	to {
-		background-position: -200% 0;
-	}
-}
-
-.pdf-inline-translate__translation-text {
-	white-space: pre-wrap;
-	line-height: 1.5;
-	font-size: 0.9rem;
-	font-family: "Hiragino Sans", "Meiryo", "Noto Sans JP", "Segoe UI", sans-serif;
+    color: var(--pdf-inline-translate-text-muted);
 }
 
 /* ==========================================================================
-   折りたたみ時のフローティングアイコン
+   Loading Skeleton
    ========================================================================== */
 
-/* --- コンテナ --- */
-.pdf-inline-translate__popup--collapsed {
-	width: auto;
-	max-height: none;
-	padding: 0;
-	border: none;
-	box-shadow: none;
-	gap: 0;
-	/* すりガラス効果を解除 */
-	background: transparent !important;
-	backdrop-filter: none !important;
-	-webkit-backdrop-filter: none !important;
+.pdf-inline-translate__skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-/* --- アイコンボタン --- */
+.pdf-inline-translate__skeleton-line {
+    width: var(--skeleton-width, 100%);
+    height: 0.7rem;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--pdf-inline-translate-surface-hover) 45%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: pdf-inline-translate__skeleton 1.2s ease-in-out infinite;
+}
+
+@keyframes pdf-inline-translate__skeleton {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.pdf-inline-translate__translation-text {
+    white-space: pre-wrap;
+    font-family: var(--font-text, "Hiragino Sans", "Meiryo", sans-serif);
+    line-height: 1.7;
+}
+
+/* ==========================================================================
+   Collapsed Button
+   ========================================================================== */
+
+.pdf-inline-translate__popup--collapsed {
+    width: auto;
+    min-width: auto;
+    min-height: auto;
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    resize: none;
+    overflow: visible;
+}
+
 .pdf-inline-translate__collapsed-button {
-	position: relative;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 2.75rem;
-	height: 2.75rem;
-	border-radius: 999px;
-	border: 1px solid var(--pdf-inline-translate-border);
-	padding: 0;
-	cursor: pointer;
-	box-shadow: var(--shadow-l, 0 4px 14px rgba(0, 0, 0, 0.18));
-	background: #ffffff;
-	color: var(--pdf-inline-translate-accent);
-	transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid var(--pdf-inline-translate-border);
+    border-radius: 999px;
+    background: var(--pdf-inline-translate-popup-bg);
+    box-shadow: var(--shadow-xs, 0 2px 8px rgba(15, 23, 42, 0.08));
+    color: var(--pdf-inline-translate-text-muted);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .pdf-inline-translate__collapsed-button:hover {
-	transform: translateY(-1px);
-	box-shadow: var(--shadow-xl, 0 6px 20px rgba(0, 0, 0, 0.2));
+    background: var(--pdf-inline-translate-surface);
+    border-color: var(--pdf-inline-translate-border-strong);
+    color: var(--pdf-inline-translate-text);
 }
 
-.pdf-inline-translate__collapsed-button:active {
-	transform: scale(0.96);
-}
-
-/* --- 状態別の色分け --- */
-.pdf-inline-translate__collapsed-button[data-state="idle"],
+.pdf-inline-translate__collapsed-button[data-state="loading"],
 .pdf-inline-translate__collapsed-button[data-state="pending"] {
-	background: #ffffff;
-	color: var(--pdf-inline-translate-accent);
-}
-
-.pdf-inline-translate__collapsed-button[data-state="loading"] {
-	background: #ffffff;
-	color: var(--pdf-inline-translate-accent);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-border-strong) 55%,
-		var(--pdf-inline-translate-border) 45%
-	);
-}
-
-.pdf-inline-translate__collapsed-button[data-state="result"] {
-	background: #ffffff;
-	color: var(--text-normal);
-	border-color: color-mix(
-		in srgb,
-		var(--pdf-inline-translate-positive) 55%,
-		var(--pdf-inline-translate-border) 45%
-	);
+    color: var(--pdf-inline-translate-accent);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="error"] {
-	background: #ffffff;
-	color: var(--pdf-inline-translate-critical);
-	border-color: var(--pdf-inline-translate-border);
+    color: var(--pdf-inline-translate-error);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="cancelled"] {
-	background: #ffffff;
-	color: var(--pdf-inline-translate-muted);
-}
-
-/* --- ローディングアニメーション --- */
-.pdf-inline-translate__collapsed-button::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	border: 2px solid transparent;
-	box-sizing: border-box;
+    color: var(--pdf-inline-translate-warning);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="loading"]::after {
-	border-top-color: color-mix(in srgb, var(--pdf-inline-translate-accent) 65%, transparent);
-	border-right-color: color-mix(in srgb, var(--pdf-inline-translate-accent) 35%, transparent);
-	border-bottom-color: color-mix(in srgb, var(--pdf-inline-translate-accent) 15%, transparent);
-	border-left-color: color-mix(in srgb, var(--pdf-inline-translate-accent) 35%, transparent);
-	animation: pdf-inline-translate__spin 0.85s linear infinite;
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: inherit;
+    animation: pdf-inline-translate__spin 0.9s linear infinite;
 }
 
 @keyframes pdf-inline-translate__spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-/* --- アイコン本体 --- */
 .pdf-inline-translate__collapsed-icon {
-	width: 60%;
-	height: 60%;
-	display: inline-block;
-	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position: center;
-}
-
-.pdf-inline-translate__collapsed-icon--fallback {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-	font-size: 0.95rem;
-	font-weight: 600;
-	background: none;
-	filter: none;
-	color: var(--pdf-inline-translate-muted);
-	letter-spacing: 0.05em;
-}
-
-.pdf-inline-translate__collapsed-button[data-state="cancelled"] .pdf-inline-translate__collapsed-icon {
-	opacity: 0.65;
-}
-
-.pdf-inline-translate__collapsed-button[data-state="loading"] .pdf-inline-translate__collapsed-icon {
-	opacity: 0.85;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
 }

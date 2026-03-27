@@ -3,21 +3,15 @@ import PdfInlineTranslatePlugin from '../main';
 import { GeminiTranslationFloatingPopup } from './floating-popup';
 import { TranslationContext } from '../types';
 import { validateAndTrim } from '../utils';
-import { TranslationProviderManager } from '../translation-provider-manager';
 import { LanguageDetector } from '../language-detector';
 
 export class UIManager {
     private plugin: PdfInlineTranslatePlugin;
     floatingPopup: GeminiTranslationFloatingPopup | null = null;
     private popupAbortController: AbortController | null = null;
-    private providerManager: TranslationProviderManager;
 
     constructor(plugin: PdfInlineTranslatePlugin) {
         this.plugin = plugin;
-        this.providerManager = new TranslationProviderManager(
-            plugin.settings,
-            plugin.historyManager,
-        );
     }
 
     onload() {
@@ -221,7 +215,7 @@ export class UIManager {
         }
 
         try {
-            const translationResult = await this.providerManager.translate(
+            const translationResult = await this.plugin.providerManager.translate(
                 selectionText,
                 this.plugin.settings.targetLanguage,
                 sourceLanguage,
