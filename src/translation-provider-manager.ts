@@ -2,6 +2,7 @@ import { TranslationHistoryManager } from './translation-history-manager';
 import { TranslationProvider, TranslationResult } from './translation-provider';
 import { PdfInlineTranslatePluginSettings } from './types';
 import { GeminiClient } from './api/gemini-client';
+import { GEMINI_MODEL } from './constants';
 import { isDictionaryCandidate } from './utils/dictionary-utils';
 
 export class TranslationProviderManager {
@@ -34,7 +35,7 @@ export class TranslationProviderManager {
                         text: result,
                         success: true,
                         provider: 'Gemini',
-                        model: this.settings.model,
+                        model: GEMINI_MODEL,
                     };
                 } catch (error) {
                     const message =
@@ -50,7 +51,7 @@ export class TranslationProviderManager {
             },
             isConfigured: () => !!this.settings.apiKey,
             getName: () => 'Gemini',
-            getModel: () => this.settings.model,
+            getModel: () => GEMINI_MODEL,
         });
 
         // Set the current provider

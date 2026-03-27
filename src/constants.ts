@@ -1,8 +1,9 @@
 import { PdfInlineTranslatePluginSettings } from './types';
 
+export const GEMINI_MODEL = 'gemini-2.5-flash';
+
 export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     apiKey: '',
-    model: 'gemini-2.5-flash-lite',
     targetLanguage: '日本語',
     maxOutputTokens: 1024,
     popupBackgroundColorAlpha: 0.9,
@@ -86,8 +87,6 @@ mitigate
     sourceLanguage: 'auto',
 };
 
-export const LEGACY_DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash-lite';
-
 // Auto-translate timing constants
 export const AUTO_TRANSLATE_DEBOUNCE_MS = 350;
 export const AUTO_TRANSLATE_REPEAT_THRESHOLD_MS = 1500;
@@ -109,7 +108,6 @@ export const ERROR_MESSAGES = {
     EMPTY_TEXT: '翻訳するテキストが空です。',
     CANCELLED: '翻訳リクエストがキャンセルされました。',
     NO_API_KEY: 'Gemini APIキーが設定されていません。',
-    NO_MODEL: 'Geminiモデルが設定されていません。',
     PROMPT_FAILED: 'プロンプトの生成に失敗しました。',
     RESPONSE_PARSE_FAILED: '翻訳応答を解析できませんでした。',
     INVALID_RESPONSE_FORMAT: 'Geminiからの応答形式が不正です。',

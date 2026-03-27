@@ -1,5 +1,5 @@
 import { PdfInlineTranslatePluginSettings, TranslationContext } from '../types';
-import { ERROR_MESSAGES } from '../constants';
+import { ERROR_MESSAGES, GEMINI_MODEL } from '../constants';
 import { TranslationHistoryManager } from '../translation-history-manager';
 import { GeminiHttpClient } from './gemini-http-client';
 import { buildTranslationPrompt } from './gemini-prompt-builder';
@@ -26,7 +26,6 @@ export class GeminiClient {
         }
         if (abortSignal.aborted) throw new Error(ERROR_MESSAGES.CANCELLED);
         if (!this.settings.apiKey) throw new Error(ERROR_MESSAGES.NO_API_KEY);
-        if (!this.settings.model) throw new Error(ERROR_MESSAGES.NO_MODEL);
 
         if (this.historyManager) {
             const cachedResult = this.historyManager.findCachedTranslation(
@@ -81,7 +80,7 @@ export class GeminiClient {
                 finalTranslation,
                 this.settings.targetLanguage,
                 undefined,
-                this.settings.model,
+                GEMINI_MODEL,
                 classification === 'dictionary',
             );
         }

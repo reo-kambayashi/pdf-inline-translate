@@ -76,20 +76,6 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             },
         );
 
-        addTextSetting(
-            containerEl,
-            'モデル',
-            '使用するGeminiモデル名。例: gemini-3.1-flash-lite-preview',
-            DEFAULT_SETTINGS.model,
-            () => this.plugin.settings.model,
-            async (value) => {
-                const trimmedValue = value.trim();
-                if (!trimmedValue) { console.warn('モデル名を空にすることはできません。'); return; }
-                this.plugin.settings.model = trimmedValue;
-                await this.saveProviderSettings();
-            },
-        );
-
         // ── ポップアップUI ─────────────────────────────────────────
         containerEl.createEl('h3', { text: 'ポップアップUI' });
 

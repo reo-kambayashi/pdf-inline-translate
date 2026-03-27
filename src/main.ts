@@ -1,6 +1,6 @@
 import { MarkdownView, Notice, Plugin } from 'obsidian';
 import { PdfInlineTranslatePluginSettings, TranslationContext } from './types';
-import { DEFAULT_SETTINGS, LEGACY_DEFAULT_GEMINI_MODEL } from './constants';
+import { DEFAULT_SETTINGS } from './constants';
 import { PdfInlineTranslateSettingTab } from './settings-tab';
 import { GeminiTranslationFloatingPopup } from './ui/floating-popup';
 import { GeminiClient } from './api/gemini-client';
@@ -110,15 +110,7 @@ export default class PdfInlineTranslatePlugin extends Plugin {
 
     async loadSettings() {
         const loadedData = await this.loadData();
-        let shouldPersistMigratedSettings = false;
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-        if (
-            !loadedData?.model ||
-            loadedData.model === LEGACY_DEFAULT_GEMINI_MODEL
-        ) {
-            this.settings.model = DEFAULT_SETTINGS.model;
-            shouldPersistMigratedSettings = true;
-        }
 
         // Initialize or load translation history
         const historyData = loadedData?.translationHistory;
@@ -135,10 +127,6 @@ export default class PdfInlineTranslatePlugin extends Plugin {
             this.translationHistoryManager,
         );
         this.geminiClient = new GeminiClient(this.settings, this.translationHistoryManager);
-
-        if (shouldPersistMigratedSettings) {
-            await this.saveSettings();
-        }
     }
 
     async saveSettings() {

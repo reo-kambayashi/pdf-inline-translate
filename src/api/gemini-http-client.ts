@@ -1,5 +1,5 @@
 import { GeminiApiResponse, PdfInlineTranslatePluginSettings } from '../types';
-import { ERROR_MESSAGES, GEMINI_API_BASE } from '../constants';
+import { ERROR_MESSAGES, GEMINI_API_BASE, GEMINI_MODEL } from '../constants';
 
 export interface GeminiRequestOptions {
     temperature?: number;
@@ -8,8 +8,22 @@ export interface GeminiRequestOptions {
     timeoutMs?: number;
 }
 
+const RETRYABLE_STATUSES = new Set([429, 500, 503]);
+const MAX_RETRIES = 3;
+
 export class GeminiHttpClient {
     constructor(private settings: PdfInlineTranslatePluginSettings) {}
+
+    private async throwForStatus(response: Response): Promise<never> {
+        const errorDetail = await this.getApiErrorDetail(response);
+        const errorMessage = `Gemini API error: ${errorDetail}`;
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+            throw new Error(`${errorMessage} - Please check your API key and quota.`);
+        } else if (response.status === 429) {
+            throw new Error(`${errorMessage} - Rate limit exceeded. Please try again later.`);
+        }
+        throw new Error(errorMessage);
+    }
 
     async sendRequest(
         prompt: string,
@@ -22,36 +36,44 @@ export class GeminiHttpClient {
 
         try {
             const requestBody = this.createRequestPayload(prompt, options);
-            const encodedModel = encodeURIComponent(this.settings.model);
+            const encodedModel = encodeURIComponent(GEMINI_MODEL);
             const url = `${GEMINI_API_BASE}/${encodedModel}:generateContent`;
             const combinedSignal = this.combineAbortSignals(abortSignal, timeoutAbortController.signal);
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': String(this.settings.apiKey),
-                },
-                body: JSON.stringify(requestBody),
-                signal: combinedSignal,
-            });
-
-            if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
-                throw new Error(ERROR_MESSAGES.CANCELLED);
-            }
-
-            if (!response.ok) {
-                const errorDetail = await this.getApiErrorDetail(response);
-                const errorMessage = `Gemini API error: ${errorDetail}`;
-                if (response.status === 400 || response.status === 401 || response.status === 403) {
-                    throw new Error(`${errorMessage} - Please check your API key and quota.`);
-                } else if (response.status === 429) {
-                    throw new Error(`${errorMessage} - Rate limit exceeded. Please try again later.`);
+            let lastError: Error | undefined;
+            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                    throw new Error(ERROR_MESSAGES.CANCELLED);
                 }
-                throw new Error(errorMessage);
-            }
+                if (attempt > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+                }
 
-            return await this.parseResponse(response);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': String(this.settings.apiKey),
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: combinedSignal,
+                });
+
+                if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                    throw new Error(ERROR_MESSAGES.CANCELLED);
+                }
+
+                if (!response.ok) {
+                    if (RETRYABLE_STATUSES.has(response.status) && attempt < MAX_RETRIES) {
+                        lastError = new Error(`Gemini API error: HTTP ${response.status}`);
+                        continue;
+                    }
+                    await this.throwForStatus(response);
+                }
+
+                return await this.parseResponse(response);
+            }
+            throw lastError ?? new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
         } finally {
             clearTimeout(timeoutId);
             if (!timeoutAbortController.signal.aborted) {
@@ -72,29 +94,39 @@ export class GeminiHttpClient {
 
         try {
             const requestBody = this.createRequestPayload(prompt, options);
-            const encodedModel = encodeURIComponent(this.settings.model);
+            const encodedModel = encodeURIComponent(GEMINI_MODEL);
             const url = `${GEMINI_API_BASE}/${encodedModel}:streamGenerateContent?alt=sse`;
             const combinedSignal = this.combineAbortSignals(abortSignal, timeoutAbortController.signal);
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': String(this.settings.apiKey),
-                },
-                body: JSON.stringify(requestBody),
-                signal: combinedSignal,
-            });
-
-            if (!response.ok) {
-                const errorDetail = await this.getApiErrorDetail(response);
-                const errorMessage = `Gemini API error: ${errorDetail}`;
-                if (response.status === 400 || response.status === 401 || response.status === 403) {
-                    throw new Error(`${errorMessage} - Please check your API key and quota.`);
-                } else if (response.status === 429) {
-                    throw new Error(`${errorMessage} - Rate limit exceeded. Please try again later.`);
+            let response: Response | undefined;
+            let lastError: Error | undefined;
+            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                    throw new Error(ERROR_MESSAGES.CANCELLED);
                 }
-                throw new Error(errorMessage);
+                if (attempt > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+                }
+                response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': String(this.settings.apiKey),
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: combinedSignal,
+                });
+                if (!response.ok) {
+                    if (RETRYABLE_STATUSES.has(response.status) && attempt < MAX_RETRIES) {
+                        lastError = new Error(`Gemini API error: HTTP ${response.status}`);
+                        continue;
+                    }
+                    await this.throwForStatus(response);
+                }
+                break;
+            }
+            if (!response || !response.ok) {
+                throw lastError ?? new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
             }
 
             if (!response.body) {
