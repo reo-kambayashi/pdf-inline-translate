@@ -40,7 +40,7 @@ export class GeminiClient {
         const normalizedKey = text.trim().toLowerCase();
 
         if (this.historyManager) {
-            let cachedResult = this.historyManager.findCachedTranslation(
+            const cachedResult = this.historyManager.findCachedTranslation(
                 text,
                 this.settings.targetLanguage,
             );
