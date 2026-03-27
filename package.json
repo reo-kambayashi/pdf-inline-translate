@@ -1,6 +1,6 @@
 {
   "name": "pdf-inline-translate",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "PDF++ プラグインで表示した PDF 内の選択テキストを Google Gemini に送信し、即座に翻訳結果を表示・コピーできる Obsidian プラグインです。",
   "main": "main.js",
   "scripts": {
@@ -38,7 +38,7 @@
     "eslint": "^9.37.0",
     "globals": "^16.4.0",
     "husky": "^9.1.7",
-    "obsidian": "^1.10.0",
+    "obsidian": "^1.12.3",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0",

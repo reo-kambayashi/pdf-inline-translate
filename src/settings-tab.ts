@@ -97,18 +97,21 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('モデル')
-            .setDesc('使用するGeminiモデル名。例: gemini-2.5-flash-lite')
+            .setDesc('使用するGeminiモデル名。例: gemini-3.1-flash-lite-preview')
             .addText((text) =>
-                text.setValue(this.plugin.settings.model).onChange(async (value) => {
-                    const trimmedValue = value.trim();
-                    // Validate model name to prevent empty values
-                    if (!trimmedValue) {
-                        console.warn('モデル名を空にすることはできません。');
-                        return;
-                    }
-                    this.plugin.settings.model = trimmedValue;
-                    await this.plugin.saveSettings();
-                }),
+                text
+                    .setPlaceholder(DEFAULT_SETTINGS.model)
+                    .setValue(this.plugin.settings.model)
+                    .onChange(async (value) => {
+                        const trimmedValue = value.trim();
+                        // Validate model name to prevent empty values
+                        if (!trimmedValue) {
+                            console.warn('モデル名を空にすることはできません。');
+                            return;
+                        }
+                        this.plugin.settings.model = trimmedValue;
+                        await this.plugin.saveSettings();
+                    }),
             );
 
         containerEl.createEl("h4", { text: "OpenAI" });

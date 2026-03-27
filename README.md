@@ -13,9 +13,16 @@ PDF++ プラグインで表示した PDF 内の選択テキストを Google Gemi
 - Gemini モデル名、出力言語、プロンプトテンプレートなどを柔軟に設定
 
 ## 動作要件
-- Obsidian 1.5.12 以降
+- Obsidian 1.11.7 で検証
 - [PDF++ プラグイン](https://github.com/RyotaUshio/obsidian-pdf-plus) が有効化されていること
 - [Google AI Studio](https://aistudio.google.com/) で発行した Gemini API キー
+
+## 1.11 系対応メモ
+- `manifest.json` の `minAppVersion` を `1.11.7` に更新し、最新版デスクトップ系列を前提にしました。
+- 開発依存の `obsidian` 型定義は `1.12.3` に更新し、最新 API 変更をビルド時に検知しやすくしました。
+- バッチ翻訳は `MarkdownView` からエディタを取得するように変更し、レイアウト変更の影響を受けやすい `constructor` ベースの判定をやめました。
+- 履歴ビューは `ItemView` の内部 DOM 構造に依存せず `contentEl` を使って描画するようにし、Obsidian 本体の view wrapper 変更に強くしました。
+- 初期化順を見直し、`UIManager` 生成前に `BatchTranslationService` が未初期化依存へ触れる状態を解消しました。
 
 ## 使い方
 1. 本プラグインを `.obsidian/plugins/pdf-inline-translate` フォルダに配置します。
@@ -31,7 +38,7 @@ PDF++ プラグインで表示した PDF 内の選択テキストを Google Gemi
 
 ## 設定項目
 - **Gemini APIキー**: Google AI Studio で発行したキーを入力します。
-- **モデル**: 利用する Gemini モデル名（例: `gemini-2.5-flash-lite`）。
+- **モデル**: 利用する Gemini モデル名（例: `gemini-3.1-flash-lite-preview`）。
 - **出力言語**: 翻訳結果を出力する言語。
 - **システム指示**: モデルに与える前提指示や翻訳スタイルを記述。
 - **プロンプトテンプレート**: `{{text}}`, `{{targetLanguage}}`, `{{page}}` を利用して翻訳用プロンプトをカスタマイズ。初期値は論文向けの直訳調テンプレートです。

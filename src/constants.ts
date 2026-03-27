@@ -2,10 +2,11 @@ import { PdfInlineTranslatePluginSettings } from './types';
 
 export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     apiKey: '',
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.1-flash-lite-preview',
     targetLanguage: '日本語',
     maxOutputTokens: 1024,
     popupBackgroundColorAlpha: 0.9,
+    enableAutoTranslate: true,
     systemInstruction: `あなたは学術翻訳および専門用語の監修を担うプロフェッショナルです。次の原則を厳守してください。
 1. 原文の論理展開・専門用語・トーンを忠実に保持し、誤訳や意訳を避ける。
 2. 太字・斜体・数式・引用番号などの書式は可能な限り維持する。
@@ -79,6 +80,8 @@ mitigate
     openAIModel: 'gpt-4',
     anthropicApiKey: '',
     anthropicModel: 'claude-3-sonnet-20240229',
+    popupWidth: 420,
+    popupHeight: 320,
     popupPosition: 'top-right',
     popupTheme: 'default',
     fontSize: 'medium',
@@ -87,6 +90,8 @@ mitigate
     enableLanguageDetection: true,
     sourceLanguage: 'auto',
 };
+
+export const LEGACY_DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 // Auto-translate timing constants
 export const AUTO_TRANSLATE_DEBOUNCE_MS = 350;

@@ -26,7 +26,7 @@ export class TranslationHistoryView extends ItemView {
     }
 
     async onOpen() {
-        const container = this.containerEl.children[1];
+        const container = this.contentEl;
         container.empty();
 
         // Create header
