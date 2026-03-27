@@ -7,7 +7,7 @@
 | Standard | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` |
 | Streaming | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse` |
 
-API key passed as query param: `?key={apiKey}` (appended by `GeminiHttpClient`).
+API key passed as request header: `x-goog-api-key: {apiKey}` (set by `GeminiHttpClient`).
 
 Base URL constant: `GEMINI_API_BASE` in [src/constants.ts](../src/constants.ts).
 
@@ -34,7 +34,7 @@ Base URL constant: `GEMINI_API_BASE` in [src/constants.ts](../src/constants.ts).
 }
 ```
 
-`systemInstruction` is omitted if the setting is empty.
+`systemInstruction` is always included in the payload; its `text` field defaults to an empty string if not configured.
 
 ---
 
@@ -103,31 +103,41 @@ Default templates are defined in `DEFAULT_SETTINGS` in [src/constants.ts](../src
 
 ## Classification (dictionary vs. translation mode)
 
-Before building a prompt, `TranslationClassifier.classify()` is called:
-
-1. Checks in-memory cache (`Map<string, boolean>`).
-2. On miss: calls `isDictionaryCandidate(text)` from [src/utils/dictionary-utils.ts](../src/utils/dictionary-utils.ts).
+Before building a prompt, `GeminiClient.requestTranslation()` calls `isDictionaryCandidate(text)` from [src/utils/dictionary-utils.ts](../src/utils/dictionary-utils.ts) directly.
 
 `isDictionaryCandidate` returns `true` if:
 - No whitespace (single token)
 - ≤ 50 characters
 - Matches `/^[A-Za-z][A-Za-z''\-]*$/`
 
-Result is cached for the session. History items seed the cache on startup via `TranslationClassifier.seedFromHistory()`.
+Classification is stateless — computed on every request with no separate cache.
+
+---
+
+## Retry logic
+
+`GeminiHttpClient` retries automatically for transient failures (`MAX_RETRIES = 3`):
+
+- Retryable HTTP statuses: **429**, **500**, **503**
+- Backoff: `1000 * 2^(attempt-1)` ms (1 s, 2 s, 4 s)
+- Aborts immediately if the caller's signal or the timeout fires between attempts
+
+Non-retryable errors (400, 401, 403, other 4xx) throw immediately.
 
 ---
 
 ## Error classification
 
-`GeminiHttpClient` maps HTTP status codes to user-facing messages:
+`GeminiHttpClient.throwForStatus()` maps HTTP status codes to error messages:
 
-| HTTP status | Error constant | Displayed message |
-|---|---|---|
-| 400 | `API_AUTH_ERROR` | API認証エラー |
-| 401 | `API_AUTH_ERROR` | API認証エラー |
-| 403 | `API_AUTH_ERROR` | API認証エラー |
-| 429 | `API_RATE_LIMITED` | レート制限 |
-| other 4xx/5xx | generic | HTTP {status} |
+| HTTP status | Error message |
+|---|---|
+| 400, 401, 403 | `"Gemini API error: {detail} - Please check your API key and quota."` |
+| 429 | `"Gemini API error: {detail} - Rate limit exceeded. Please try again later."` (retried first) |
+| 500, 503 | Retried up to 3 times; then throws `"Gemini API error: {detail}"` |
+| other | `"Gemini API error: {detail}"` |
+
+`{detail}` is extracted from the JSON error response (`error.message`), falling back to `HTTP {status}`.
 
 Abort errors (from `AbortController`) are detected by `isAbortError()` and surface as `type: 'cancelled'`.
 

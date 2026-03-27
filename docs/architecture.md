@@ -23,9 +23,8 @@ src/
 │
 ├── api/
 │   ├── gemini-client.ts           High-level: classification, prompt, streaming coordination
-│   ├── gemini-http-client.ts      Low-level: HTTP, SSE streaming, timeout/abort
-│   ├── gemini-prompt-builder.ts   Template substitution for prompts
-│   └── translation-classifier.ts  In-memory classification cache
+│   ├── gemini-http-client.ts      Low-level: HTTP, SSE streaming, retry, timeout/abort
+│   └── gemini-prompt-builder.ts   Template substitution for prompts
 │
 ├── ui/
 │   ├── ui-manager.ts              Popup lifecycle, translation execution, page observer
@@ -38,8 +37,8 @@ src/
 │   ├── translation-history-view.ts Obsidian ItemView for history side panel
 │   └── constants.ts               UI status strings, popup offset defaults
 │
+├── utils.ts                       DOM helpers, debounce, text splitting, validation
 └── utils/
-    ├── utils.ts                   DOM helpers, debounce, text splitting, validation
     └── dictionary-utils.ts        isDictionaryCandidate() — single English word check
 ```
 
@@ -80,7 +79,7 @@ src/
    - On miss → classifies text, calls GeminiClient.requestTranslation()
          ↓
 8. GeminiClient.requestTranslation(text, context, abortSignal, onChunk)
-   - TranslationClassifier.classify() → dictionary or translation mode
+   - isDictionaryCandidate(text) → dictionary or translation mode
    - GeminiPromptBuilder builds prompt from template
    - GeminiHttpClient.sendRequest() or .streamRequest()
          ↓
@@ -105,7 +104,6 @@ src/
 
 | Level | Location | Scope | Persisted |
 |---|---|---|---|
-| Classification | `TranslationClassifier` | text → dictionary/translation flag | No (session only) |
 | Translation | `TranslationHistoryManager` | text + targetLang + isDictionary → result | Yes (plugin data) |
 | History store | Obsidian `loadData/saveData` | All history items (max 50) | Yes |
 
@@ -133,7 +131,7 @@ Cache key for translation lookup: exact string match on `original` + `targetLang
 If true → `dictionaryPromptTemplate` is used (lexicon-style card with definitions and examples).
 Otherwise → `translationPromptTemplate` (academic paragraph translation).
 
-Classification result is cached in `TranslationClassifier` to avoid redundant API calls.
+Classification is performed inline in `GeminiClient.requestTranslation()` on every call; there is no separate cache for classification results.
 
 ---
 

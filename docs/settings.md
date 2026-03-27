@@ -10,8 +10,6 @@ Defaults are in `DEFAULT_SETTINGS` ([src/constants.ts](../src/constants.ts)).
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `string` | `""` | Gemini API key. Must start with `AIza`. Get from https://aistudio.google.com/ |
-| `model` | `string` | `"gemini-2.5-flash-lite"` | Gemini model name |
-| `translationProvider` | `'gemini'` | `'gemini'` | Active provider (currently only Gemini) |
 
 ---
 
