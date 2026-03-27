@@ -9,6 +9,7 @@ export class UIManager {
     private plugin: PdfInlineTranslatePlugin;
     floatingPopup: GeminiTranslationFloatingPopup | null = null;
     private popupAbortController: AbortController | null = null;
+    private pageObserver: MutationObserver | null = null;
 
     constructor(plugin: PdfInlineTranslatePlugin) {
         this.plugin = plugin;
@@ -22,6 +23,38 @@ export class UIManager {
 
     onunload() {
         this.destroyFloatingPopup();
+    }
+
+    private setupPageRemovalObserver(pageElement: Element) {
+        this.teardownPageRemovalObserver();
+        const observeRoot =
+            pageElement.closest(
+                '.pdf-viewer, .pdfViewer, .pdf-plus-viewer, .pdf-plus-root, .obsidian-pdf-view, [data-type="pdf"], [data-type="pdf-plus"]',
+            )?.parentElement ?? document.body;
+
+        const observer = new MutationObserver(() => {
+            if (!document.contains(pageElement)) {
+                this.teardownPageRemovalObserver();
+                if (this.popupAbortController) {
+                    this.popupAbortController.abort();
+                    this.popupAbortController = null;
+                }
+                if (this.floatingPopup) {
+                    this.floatingPopup.destroy();
+                    this.floatingPopup = null;
+                }
+            }
+        });
+
+        observer.observe(observeRoot, { childList: true, subtree: true });
+        this.pageObserver = observer;
+    }
+
+    private teardownPageRemovalObserver() {
+        if (this.pageObserver) {
+            this.pageObserver.disconnect();
+            this.pageObserver = null;
+        }
     }
 
     openTranslationInPopup(selectionText: string, context: TranslationContext) {
@@ -52,6 +85,18 @@ export class UIManager {
         if (!popup) {
             new Notice('翻訳ポップアップが利用できません。');
             return;
+        }
+
+        const sel = window.getSelection?.();
+        if (sel && sel.rangeCount > 0) {
+            try {
+                const pageEl = this.plugin.selectionManager.findPdfSelectionElement(
+                    sel.getRangeAt(0).commonAncestorContainer,
+                );
+                if (pageEl) this.setupPageRemovalObserver(pageEl);
+            } catch {
+                // Not critical — silently ignore
+            }
         }
 
         if (this.popupAbortController) {
@@ -277,6 +322,7 @@ export class UIManager {
     }
 
     destroyFloatingPopup() {
+        this.teardownPageRemovalObserver();
         if (!this.floatingPopup) {
             return;
         }
