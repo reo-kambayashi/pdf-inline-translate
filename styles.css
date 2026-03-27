@@ -1,45 +1,18 @@
 /* ==========================================================================
-   Appearance Tokens
-   ========================================================================== */
-
-:root {
-    --pdf-inline-translate-popup-bg: var(--background-primary, #ffffff);
-    --pdf-inline-translate-surface: var(--background-secondary, #f5f6f8);
-    --pdf-inline-translate-surface-hover: var(--background-modifier-hover, rgba(0, 0, 0, 0.06));
-    --pdf-inline-translate-border: var(--background-modifier-border, rgba(0, 0, 0, 0.12));
-    --pdf-inline-translate-border-strong: var(--background-modifier-border-hover, rgba(0, 0, 0, 0.18));
-    --pdf-inline-translate-text: var(--text-normal, #1f2328);
-    --pdf-inline-translate-text-muted: var(--text-muted, #5c6470);
-    --pdf-inline-translate-text-faint: var(--text-faint, #7d8590);
-    --pdf-inline-translate-accent: var(--text-accent, var(--interactive-accent, #4f46e5));
-    --pdf-inline-translate-accent-hover: var(
-        --interactive-accent-hover,
-        var(--interactive-accent, #4338ca)
-    );
-    --pdf-inline-translate-success: var(--color-green, #2f9e44);
-    --pdf-inline-translate-warning: var(--color-orange, #d97706);
-    --pdf-inline-translate-error: var(--color-red, #dc2626);
-    --pdf-inline-translate-shadow: var(--shadow-s, 0 8px 24px rgba(15, 23, 42, 0.12));
-    --pdf-inline-translate-radius: 10px;
-    --pdf-inline-translate-font-size: 14px;
-    --pdf-inline-translate-line-height: 1.6;
-}
-
-/* ==========================================================================
    Shared Styles
    ========================================================================== */
 
 .pdf-inline-translate__section {
     margin-bottom: 0.5rem;
     font-size: 0.8rem;
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
 }
 
 .pdf-inline-translate__status {
     margin: 0;
     font-size: 0.8rem;
     line-height: 1.45;
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
 }
 
 .pdf-inline-translate__buttons {
@@ -68,7 +41,7 @@
 
 .pdf-inline-translate__panel-empty {
     padding: 1rem;
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -76,17 +49,20 @@
    ========================================================================== */
 
 .pdf-inline-translate__popup {
+    --pdf-inline-translate-font-size: 14px;
+    --pdf-inline-translate-line-height: 1.6;
+
     position: fixed;
     display: none;
     flex-direction: column;
     gap: 0.75rem;
     width: min(32rem, calc(100vw - 1.5rem));
     padding: 0.875rem;
-    border: 1px solid var(--pdf-inline-translate-border);
-    border-radius: var(--pdf-inline-translate-radius);
-    background: var(--pdf-inline-translate-popup-bg);
-    box-shadow: var(--pdf-inline-translate-shadow);
-    color: var(--pdf-inline-translate-text);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    background: var(--background-primary);
+    box-shadow: var(--shadow-s);
+    color: var(--text-normal);
     z-index: 1000;
     font-size: var(--pdf-inline-translate-font-size);
     line-height: var(--pdf-inline-translate-line-height);
@@ -120,27 +96,27 @@
 /* system / default: inherits Obsidian's CSS vars — no override needed */
 
 .pdf-inline-translate__popup.pdf-inline-translate__theme-dark {
-    --pdf-inline-translate-popup-bg: #1e1e2e;
-    --pdf-inline-translate-surface: #2a2a3d;
-    --pdf-inline-translate-surface-hover: rgba(255, 255, 255, 0.06);
-    --pdf-inline-translate-border: rgba(255, 255, 255, 0.1);
-    --pdf-inline-translate-border-strong: rgba(255, 255, 255, 0.18);
-    --pdf-inline-translate-text: #cdd6f4;
-    --pdf-inline-translate-text-muted: #a6adc8;
-    --pdf-inline-translate-text-faint: #7f849c;
-    --pdf-inline-translate-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --background-primary: #1e1e2e;
+    --background-secondary: #2a2a3d;
+    --background-modifier-hover: rgba(255, 255, 255, 0.06);
+    --background-modifier-border: rgba(255, 255, 255, 0.1);
+    --background-modifier-border-hover: rgba(255, 255, 255, 0.18);
+    --text-normal: #cdd6f4;
+    --text-muted: #a6adc8;
+    --text-faint: #7f849c;
+    --shadow-s: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .pdf-inline-translate__popup.pdf-inline-translate__theme-light {
-    --pdf-inline-translate-popup-bg: #ffffff;
-    --pdf-inline-translate-surface: #f5f6f8;
-    --pdf-inline-translate-surface-hover: rgba(0, 0, 0, 0.06);
-    --pdf-inline-translate-border: rgba(0, 0, 0, 0.12);
-    --pdf-inline-translate-border-strong: rgba(0, 0, 0, 0.18);
-    --pdf-inline-translate-text: #1f2328;
-    --pdf-inline-translate-text-muted: #5c6470;
-    --pdf-inline-translate-text-faint: #7d8590;
-    --pdf-inline-translate-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    --background-primary: #ffffff;
+    --background-secondary: #f5f6f8;
+    --background-modifier-hover: rgba(0, 0, 0, 0.06);
+    --background-modifier-border: rgba(0, 0, 0, 0.12);
+    --background-modifier-border-hover: rgba(0, 0, 0, 0.18);
+    --text-normal: #1f2328;
+    --text-muted: #5c6470;
+    --text-faint: #7d8590;
+    --shadow-s: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 /* ==========================================================================
@@ -153,7 +129,7 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--pdf-inline-translate-border);
+    border-bottom: 1px solid var(--background-modifier-border);
     user-select: none;
 }
 
@@ -168,7 +144,7 @@
 .pdf-inline-translate__popup-title {
     font-size: 0.95em;
     font-weight: 600;
-    color: var(--pdf-inline-translate-text);
+    color: var(--text-normal);
     white-space: nowrap;
 }
 
@@ -179,8 +155,8 @@
     min-height: 1.5rem;
     padding: 0.125rem 0.5rem;
     border-radius: 999px;
-    background: var(--pdf-inline-translate-surface);
-    color: var(--pdf-inline-translate-text-muted);
+    background: var(--background-secondary);
+    color: var(--text-muted);
     font-size: 0.72em;
     font-weight: 500;
     line-height: 1;
@@ -198,19 +174,19 @@
 
 .pdf-inline-translate__popup-badge[data-state="loading"],
 .pdf-inline-translate__popup-badge[data-state="pending"] {
-    color: var(--pdf-inline-translate-accent);
+    color: var(--text-accent);
 }
 
 .pdf-inline-translate__popup-badge[data-state="result"] {
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
 }
 
 .pdf-inline-translate__popup-badge[data-state="error"] {
-    color: var(--pdf-inline-translate-error);
+    color: var(--color-red);
 }
 
 .pdf-inline-translate__popup-badge[data-state="cancelled"] {
-    color: var(--pdf-inline-translate-warning);
+    color: var(--color-orange);
 }
 
 .pdf-inline-translate__popup-actions {
@@ -228,18 +204,24 @@
     height: 1.9rem;
     padding: 0;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--radius-s);
     background: transparent;
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+.pdf-inline-translate__popup-collapse svg,
+.pdf-inline-translate__popup-close svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
 .pdf-inline-translate__popup-collapse:hover,
 .pdf-inline-translate__popup-close:hover {
-    background: var(--pdf-inline-translate-surface);
-    border-color: var(--pdf-inline-translate-border);
-    color: var(--pdf-inline-translate-text);
+    background: var(--background-secondary);
+    border-color: var(--background-modifier-border);
+    color: var(--text-normal);
 }
 
 /* ==========================================================================
@@ -255,9 +237,9 @@
 
 .pdf-inline-translate__original-section,
 .pdf-inline-translate__translation {
-    border: 1px solid var(--pdf-inline-translate-border);
-    border-radius: 8px;
-    background: var(--pdf-inline-translate-surface);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
 }
 
 .pdf-inline-translate__original-section {
@@ -272,7 +254,7 @@
 }
 
 .pdf-inline-translate__original-section.is-expanded {
-    border-color: var(--pdf-inline-translate-border-strong);
+    border-color: var(--background-modifier-border-hover);
 }
 
 .pdf-inline-translate__original-toggle {
@@ -280,18 +262,18 @@
     padding: 0;
     border: none;
     background: transparent;
-    color: var(--pdf-inline-translate-accent);
+    color: var(--text-accent);
     font-size: 0.78em;
     font-weight: 500;
     cursor: pointer;
 }
 
 .pdf-inline-translate__original-toggle:hover {
-    color: var(--pdf-inline-translate-accent-hover);
+    color: var(--interactive-accent-hover);
 }
 
 .pdf-inline-translate__original-toggle[disabled] {
-    color: var(--pdf-inline-translate-text-faint);
+    color: var(--text-faint);
     cursor: not-allowed;
 }
 
@@ -300,7 +282,7 @@
     max-height: 7rem;
     overflow: auto;
     white-space: pre-wrap;
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
     font-size: 0.86em;
     line-height: 1.6;
     font-family: var(--font-text, "Hiragino Sans", "Meiryo", sans-serif);
@@ -316,36 +298,36 @@
     max-height: 48vh;
     overflow: auto;
     padding: 0.875rem;
-    background: var(--pdf-inline-translate-popup-bg);
-    color: var(--pdf-inline-translate-text);
+    background: var(--background-primary);
+    color: var(--text-normal);
 }
 
 .pdf-inline-translate__translation[data-state="idle"],
 .pdf-inline-translate__translation[data-state="pending"] {
-    border-color: var(--pdf-inline-translate-border);
+    border-color: var(--background-modifier-border);
 }
 
 .pdf-inline-translate__translation[data-state="loading"] {
-    border-color: var(--pdf-inline-translate-accent);
+    border-color: var(--text-accent);
 }
 
 .pdf-inline-translate__translation[data-state="result"] {
-    border-color: var(--pdf-inline-translate-border-strong);
+    border-color: var(--background-modifier-border-hover);
 }
 
 .pdf-inline-translate__translation[data-state="error"] {
     border-color: color-mix(
         in srgb,
-        var(--pdf-inline-translate-error) 40%,
-        var(--pdf-inline-translate-border) 60%
+        var(--color-red) 40%,
+        var(--background-modifier-border) 60%
     );
 }
 
 .pdf-inline-translate__translation[data-state="cancelled"] {
     border-color: color-mix(
         in srgb,
-        var(--pdf-inline-translate-warning) 40%,
-        var(--pdf-inline-translate-border) 60%
+        var(--color-orange) 40%,
+        var(--background-modifier-border) 60%
     );
 }
 
@@ -353,128 +335,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-}
-
-/* ==========================================================================
-   Markdown Content
-   ========================================================================== */
-
-.pdf-inline-translate__markdown-heading {
-    margin: 0;
-    color: var(--pdf-inline-translate-text);
-    font-weight: 600;
-    line-height: 1.4;
-}
-
-.pdf-inline-translate__markdown-heading--level-1 {
-    font-size: 1.15em;
-}
-
-.pdf-inline-translate__markdown-heading--level-2 {
-    font-size: 1.05em;
-}
-
-.pdf-inline-translate__markdown-heading--level-3,
-.pdf-inline-translate__markdown-heading--level-4 {
-    font-size: 1em;
-}
-
-.pdf-inline-translate__markdown-paragraph {
-    margin: 0;
-    color: var(--pdf-inline-translate-text);
-    line-height: 1.7;
-}
-
-.pdf-inline-translate__markdown-placeholder {
-    color: var(--pdf-inline-translate-text-muted);
-}
-
-.pdf-inline-translate__markdown-list {
-    margin: 0;
-    padding-left: 1.25rem;
-    color: var(--pdf-inline-translate-text);
-}
-
-.pdf-inline-translate__markdown-list--ordered {
-    list-style: decimal;
-}
-
-.pdf-inline-translate__markdown-list:not(.pdf-inline-translate__markdown-list--ordered) {
-    list-style: disc;
-}
-
-.pdf-inline-translate__markdown-list-item {
-    line-height: 1.65;
-}
-
-.pdf-inline-translate__markdown-quote {
-    margin: 0;
-    padding: 0.625rem 0.75rem;
-    border-left: 3px solid var(--pdf-inline-translate-border-strong);
-    background: var(--pdf-inline-translate-surface);
-    color: var(--pdf-inline-translate-text);
-}
-
-.pdf-inline-translate__markdown-quote-line {
-    margin: 0;
-    line-height: 1.65;
-}
-
-.pdf-inline-translate__markdown-code {
-    margin: 0;
-    padding: 0.75rem 0.875rem;
-    overflow-x: auto;
-    border-radius: 6px;
-    background: var(--pdf-inline-translate-surface);
-    color: var(--pdf-inline-translate-text);
-    font-size: 0.9em;
-}
-
-.pdf-inline-translate__markdown-code code {
-    font-family: var(--font-monospace);
-    white-space: pre;
-}
-
-.pdf-inline-translate__markdown-paragraph code,
-.pdf-inline-translate__markdown-list-item code,
-.pdf-inline-translate__markdown-quote-line code {
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    background: var(--pdf-inline-translate-surface);
-    font-family: var(--font-monospace);
-}
-
-.pdf-inline-translate__markdown-paragraph a,
-.pdf-inline-translate__markdown-list-item a,
-.pdf-inline-translate__markdown-quote-line a {
-    color: var(--pdf-inline-translate-accent);
-    text-decoration: underline;
-    text-underline-offset: 0.15rem;
-}
-
-.pdf-inline-translate__markdown-paragraph a:hover,
-.pdf-inline-translate__markdown-list-item a:hover,
-.pdf-inline-translate__markdown-quote-line a:hover {
-    color: var(--pdf-inline-translate-accent-hover);
-}
-
-.pdf-inline-translate__markdown-paragraph strong,
-.pdf-inline-translate__markdown-list-item strong,
-.pdf-inline-translate__markdown-quote-line strong {
-    color: var(--pdf-inline-translate-text);
-    font-weight: 600;
-}
-
-.pdf-inline-translate__markdown-paragraph em,
-.pdf-inline-translate__markdown-list-item em,
-.pdf-inline-translate__markdown-quote-line em {
-    color: var(--pdf-inline-translate-text-muted);
-}
-
-.pdf-inline-translate__markdown-paragraph del,
-.pdf-inline-translate__markdown-list-item del,
-.pdf-inline-translate__markdown-quote-line del {
-    color: var(--pdf-inline-translate-text-muted);
 }
 
 /* ==========================================================================
@@ -494,7 +354,7 @@
     background: linear-gradient(
         90deg,
         transparent 0%,
-        var(--pdf-inline-translate-surface-hover) 45%,
+        var(--background-modifier-hover) 45%,
         transparent 100%
     );
     background-size: 200% 100%;
@@ -542,32 +402,32 @@
     width: 2.5rem;
     height: 2.5rem;
     padding: 0;
-    border: 1px solid var(--pdf-inline-translate-border);
+    border: 1px solid var(--background-modifier-border);
     border-radius: 999px;
-    background: var(--pdf-inline-translate-popup-bg);
+    background: var(--background-primary);
     box-shadow: var(--shadow-xs, 0 2px 8px rgba(15, 23, 42, 0.08));
-    color: var(--pdf-inline-translate-text-muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .pdf-inline-translate__collapsed-button:hover {
-    background: var(--pdf-inline-translate-surface);
-    border-color: var(--pdf-inline-translate-border-strong);
-    color: var(--pdf-inline-translate-text);
+    background: var(--background-secondary);
+    border-color: var(--background-modifier-border-hover);
+    color: var(--text-normal);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="loading"],
 .pdf-inline-translate__collapsed-button[data-state="pending"] {
-    color: var(--pdf-inline-translate-accent);
+    color: var(--text-accent);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="error"] {
-    color: var(--pdf-inline-translate-error);
+    color: var(--color-red);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="cancelled"] {
-    color: var(--pdf-inline-translate-warning);
+    color: var(--color-orange);
 }
 
 .pdf-inline-translate__collapsed-button[data-state="loading"]::after {
@@ -595,8 +455,9 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: none;
+}
+
+.pdf-inline-translate__collapsed-icon svg {
+    width: 1rem;
+    height: 1rem;
 }

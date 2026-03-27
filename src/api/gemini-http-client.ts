@@ -60,6 +60,94 @@ export class GeminiHttpClient {
         }
     }
 
+    async streamRequest(
+        prompt: string,
+        abortSignal: AbortSignal,
+        onChunk: (text: string) => void,
+        options?: GeminiRequestOptions,
+    ): Promise<string> {
+        const timeoutMs = options?.timeoutMs ?? this.settings.timeoutMs ?? 30000;
+        const timeoutAbortController = new AbortController();
+        const timeoutId = setTimeout(() => timeoutAbortController.abort(), timeoutMs);
+
+        try {
+            const requestBody = this.createRequestPayload(prompt, options);
+            const encodedModel = encodeURIComponent(this.settings.model);
+            const url = `${GEMINI_API_BASE}/${encodedModel}:streamGenerateContent?alt=sse`;
+            const combinedSignal = this.combineAbortSignals(abortSignal, timeoutAbortController.signal);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': String(this.settings.apiKey),
+                },
+                body: JSON.stringify(requestBody),
+                signal: combinedSignal,
+            });
+
+            if (!response.ok) {
+                const errorDetail = await this.getApiErrorDetail(response);
+                const errorMessage = `Gemini API error: ${errorDetail}`;
+                if (response.status === 400 || response.status === 401 || response.status === 403) {
+                    throw new Error(`${errorMessage} - Please check your API key and quota.`);
+                } else if (response.status === 429) {
+                    throw new Error(`${errorMessage} - Rate limit exceeded. Please try again later.`);
+                }
+                throw new Error(errorMessage);
+            }
+
+            if (!response.body) {
+                throw new Error(ERROR_MESSAGES.RESPONSE_PARSE_FAILED);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let accumulated = '';
+
+            while (true) {
+                if (abortSignal.aborted || timeoutAbortController.signal.aborted) {
+                    reader.cancel();
+                    throw new Error(ERROR_MESSAGES.CANCELLED);
+                }
+
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() ?? '';
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const jsonStr = line.slice(6).trim();
+                    if (!jsonStr) continue;
+                    try {
+                        const data = JSON.parse(jsonStr) as GeminiApiResponse;
+                        const parts = data?.candidates?.[0]?.content?.parts;
+                        if (!Array.isArray(parts)) continue;
+                        for (const part of parts) {
+                            if (typeof part?.text === 'string' && part.text) {
+                                accumulated += part.text;
+                                onChunk(part.text);
+                            }
+                        }
+                    } catch {
+                        // malformed SSE chunk — skip
+                    }
+                }
+            }
+
+            return accumulated;
+        } finally {
+            clearTimeout(timeoutId);
+            if (!timeoutAbortController.signal.aborted) {
+                timeoutAbortController.abort();
+            }
+        }
+    }
+
     extractText(responseData: GeminiApiResponse): string {
         const candidates = responseData?.candidates;
         if (!Array.isArray(candidates) || candidates.length === 0) {

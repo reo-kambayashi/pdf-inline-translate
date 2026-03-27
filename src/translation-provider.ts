@@ -23,6 +23,7 @@ export interface TranslationProvider {
         sourceLang?: string,
         context?: TranslationContext,
         abortSignal?: AbortSignal,
+        onChunk?: (text: string) => void,
     ): Promise<TranslationResult>;
 
     /**

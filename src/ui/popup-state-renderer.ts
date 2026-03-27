@@ -1,6 +1,7 @@
+import { MarkdownRenderer } from 'obsidian';
 import { TranslationState } from '../types';
-import { MarkdownRenderer } from './markdown-renderer';
 import { UI_STATUS_MESSAGES } from './constants';
+import type PdfInlineTranslatePlugin from '../main';
 
 export interface PopupDomRefs {
     statusEl: HTMLElement | null;
@@ -14,13 +15,14 @@ export interface PopupDomRefs {
 
 export class PopupStateRenderer {
     constructor(
+        private plugin: PdfInlineTranslatePlugin,
         private getRefs: () => PopupDomRefs,
         private getOriginalText: () => string,
         private getIsOriginalVisible: () => boolean,
         private getShowOriginalTextSetting: () => boolean,
     ) {}
 
-    renderState(state: TranslationState | null): void {
+    async renderState(state: TranslationState | null): Promise<void> {
         const refs = this.getRefs();
 
         if (!state) {
@@ -44,9 +46,8 @@ export class PopupStateRenderer {
                 break;
             case 'result':
                 this.updateStatusBadge('result');
-                this.renderCustomMarkdown(state.translation ?? '');
+                await this.renderCustomMarkdown(state.translation ?? '');
                 if (refs.statusEl) refs.statusEl.textContent = '';
-                this.clearSkeleton();
                 this.toggleCopyButton(Boolean(state.translation));
                 break;
             case 'cancelled':
@@ -117,10 +118,31 @@ export class PopupStateRenderer {
         }
     }
 
-    private renderCustomMarkdown(markdown: string): void {
+    private async renderCustomMarkdown(markdown: string): Promise<void> {
         const el = this.getRefs().translationEl;
         if (!el) return;
-        MarkdownRenderer.render(markdown, el);
+        this.clearSkeleton();
+        el.innerHTML = '';
+        el.dataset.state = 'result';
+        el.classList.add('pdf-inline-translate__translation--custom');
+        if (!markdown.trim()) {
+            el.createEl('p').textContent = '翻訳結果がありません。';
+            return;
+        }
+        await MarkdownRenderer.render(this.plugin.app, markdown, el, '', this.plugin);
+    }
+
+    appendStreamChunk(chunk: string): void {
+        const el = this.getRefs().translationEl;
+        if (!el) return;
+        if (el.dataset.state !== 'streaming') {
+            this.clearSkeleton();
+            el.dataset.state = 'streaming';
+            el.classList.remove('pdf-inline-translate__translation--custom');
+            el.innerHTML = '';
+            this.updateStatusBadge('loading');
+        }
+        el.textContent = (el.textContent ?? '') + chunk;
     }
 
     private renderLoadingSkeleton(): void {

@@ -259,6 +259,10 @@ export class UIManager {
             sourceLanguage = this.plugin.settings.sourceLanguage;
         }
 
+        const onChunk = (chunk: string) => {
+            if (!abortController.signal.aborted) popup.appendStreamChunk(chunk);
+        };
+
         try {
             const translationResult = await this.plugin.providerManager.translate(
                 selectionText,
@@ -266,6 +270,7 @@ export class UIManager {
                 sourceLanguage,
                 safeContext,
                 abortController.signal,
+                onChunk,
             );
 
             // Check if the request was aborted after the API call completed

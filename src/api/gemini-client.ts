@@ -1,4 +1,3 @@
-import { Notice } from 'obsidian';
 import { PdfInlineTranslatePluginSettings, TranslationContext } from '../types';
 import { ERROR_MESSAGES } from '../constants';
 import { TranslationHistoryManager } from '../translation-history-manager';
@@ -15,16 +14,14 @@ export class GeminiClient {
         private historyManager?: TranslationHistoryManager,
     ) {
         this.httpClient = new GeminiHttpClient(settings);
-        this.classifier = new TranslationClassifier(
-            this.httpClient,
-            () => this.settings.timeoutMs || 30000,
-        );
+        this.classifier = new TranslationClassifier();
     }
 
     async requestTranslation(
         text: string,
         context: TranslationContext,
         abortSignal: AbortSignal,
+        onChunk?: (text: string) => void,
     ): Promise<string> {
         if (!text || typeof text !== 'string' || text.trim().length === 0) {
             throw new Error(ERROR_MESSAGES.EMPTY_TEXT);
@@ -59,15 +56,16 @@ export class GeminiClient {
                 throw new Error(ERROR_MESSAGES.PROMPT_FAILED);
             }
 
-            const responseData = await this.httpClient.sendRequest(prompt, abortSignal, { timeoutMs });
-            const translation = this.httpClient.extractText(responseData);
+            let translation: string;
+            if (onChunk) {
+                translation = await this.httpClient.streamRequest(prompt, abortSignal, onChunk, { timeoutMs });
+            } else {
+                const responseData = await this.httpClient.sendRequest(prompt, abortSignal, { timeoutMs });
+                translation = this.httpClient.extractText(responseData);
+            }
 
             if (!translation || translation.length === 0) {
                 throw new Error(ERROR_MESSAGES.NO_TRANSLATION_RESULT);
-            }
-
-            if (responseData?.promptFeedback?.blockReason) {
-                new Notice(`Geminiが出力をブロックしました: ${String(responseData.promptFeedback.blockReason)}`);
             }
 
             finalTranslation = translation;

@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 import PdfInlineTranslatePlugin from '../main';
 import { TranslationState, TranslationContext } from '../types';
 import { PopupDragHandler } from './popup-drag-handler';
@@ -6,8 +6,6 @@ import { PopupPositioner } from './popup-positioner';
 import { PopupDomBuilder, HeaderRefs, BodyRefs } from './popup-dom-builder';
 import { PopupStateRenderer, PopupDomRefs } from './popup-state-renderer';
 
-// Re-export MarkdownBlock from types for backward compatibility
-export type { MarkdownBlock } from '../types';
 
 export class GeminiTranslationFloatingPopup {
     private plugin: PdfInlineTranslatePlugin;
@@ -50,6 +48,7 @@ export class GeminiTranslationFloatingPopup {
             (top, left) => this.positioner.applyPosition(top, left),
         );
         this.stateRenderer = new PopupStateRenderer(
+            this.plugin,
             () => this.getDomRefs(),
             () => this.originalText,
             () => this.isOriginalVisible,
@@ -120,6 +119,12 @@ export class GeminiTranslationFloatingPopup {
             this.renderExpandedState();
         } else {
             this.renderCollapsed(context);
+        }
+    }
+
+    appendStreamChunk(chunk: string) {
+        if (this.isExpanded) {
+            this.stateRenderer.appendStreamChunk(chunk);
         }
     }
 
@@ -256,7 +261,7 @@ export class GeminiTranslationFloatingPopup {
         const icon = document.createElement('span');
         icon.className = 'pdf-inline-translate__collapsed-icon';
         icon.setAttribute('aria-hidden', 'true');
-        icon.textContent = '訳';
+        setIcon(icon, 'languages');
         button.appendChild(icon);
 
         container.appendChild(button);
@@ -337,7 +342,7 @@ export class GeminiTranslationFloatingPopup {
         }
     }
 
-    renderExpandedState() {
+    async renderExpandedState() {
         const state = this.currentState;
         const context = state?.context ?? this.lastContext ?? {};
         const original = state?.original ?? '';
@@ -347,7 +352,7 @@ export class GeminiTranslationFloatingPopup {
             this.container.dataset.popupState = state?.type ?? 'idle';
         }
 
-        this.stateRenderer.renderState(state);
+        await this.stateRenderer.renderState(state);
         this.positioner.setPositionFromContext(context);
     }
 

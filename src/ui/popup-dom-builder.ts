@@ -1,3 +1,5 @@
+import { setIcon } from 'obsidian';
+
 export interface HeaderRefs {
     element: HTMLElement;
     statusBadgeEl: HTMLSpanElement;
@@ -46,7 +48,7 @@ export class PopupDomBuilder {
         collapseButton.type = 'button';
         collapseButton.className = 'pdf-inline-translate__popup-collapse';
         collapseButton.setAttribute('aria-label', 'ポップアップを折りたたむ');
-        collapseButton.textContent = '−';
+        setIcon(collapseButton, 'minus');
         collapseButton.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -57,7 +59,8 @@ export class PopupDomBuilder {
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
         closeButton.className = 'pdf-inline-translate__popup-close';
-        closeButton.innerHTML = '&times;';
+        closeButton.setAttribute('aria-label', '閉じる');
+        setIcon(closeButton, 'x');
         closeButton.addEventListener('click', onClose);
         headerActions.appendChild(closeButton);
 
