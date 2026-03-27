@@ -270,7 +270,6 @@ export class UIManager {
 
             // Check if the request was aborted after the API call completed
             if (abortController.signal.aborted) {
-                popup.showCancelled(selectionText, safeContext);
                 return;
             }
 
@@ -291,7 +290,6 @@ export class UIManager {
             this.handleTranslationSuccess(popup, selectionText, translation, safeContext);
         } catch (error) {
             if (abortController.signal.aborted) {
-                popup.showCancelled(selectionText, safeContext);
                 return;
             }
 
