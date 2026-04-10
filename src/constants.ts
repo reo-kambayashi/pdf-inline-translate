@@ -1,11 +1,11 @@
 import { PdfInlineTranslatePluginSettings } from './types';
 
-export const GEMINI_MODEL = 'gemini-2.5-flash';
+export const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
 
 export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     apiKey: '',
     targetLanguage: '日本語',
-    maxOutputTokens: 1024,
+    maxOutputTokens: 512,
     popupBackgroundColorAlpha: 0.9,
     enableAutoTranslate: true,
     systemInstruction: `あなたは学術翻訳および専門用語の監修を担うプロフェッショナルです。次の原則を厳守してください。
@@ -23,20 +23,6 @@ PDF原稿の{{page}}ページから抽出した内容を、{{targetLanguage}}で
 - 翻訳結果のみを出力し、追加の説明やサマリーを入れない。
 - 数式の形が崩れていそうな場合は、整形して出力する。
 
-## 例1
-### 原文
-The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the English alphabet.
-
-### 出力
-素早い茶色の狐は怠惰な犬を飛び越える。この文には英語のアルファベットのすべての文字が含まれている。
-
-## 例2
-### 原文
-**Figure 1:** A diagram showing the proposed architecture. The system consists of three main components: a data ingestion module, a processing engine, and a visualization dashboard.
-
-### 出力
-**図1:** 提案されたアーキテクチャを示す図。このシステムは、データ取り込みモジュール、処理エンジン、および可視化ダッシュボードの3つの主要コンポーネントで構成される。
-
 ## 対象の原文
 {{text}}
 
@@ -52,22 +38,16 @@ The quick brown fox jumps over the lazy dog. This sentence contains all the lett
 - 意味は使用される頻度の高い順に並べること。
 - 例文に登場する対象語句は、**太字**で強調すること。
 
-### 例
-mitigate
+### 出力形式
+**{語句}** /{発音記号}/
 
-#### 出力例
-**mitigate** /ˈmɪtɪɡeɪt/
-
-1.  **品詞:** 動詞
-    - **意味1:** （苦痛・厳しさなどを）和らげる、軽減する
-      **例文:** They are trying to **mitigate** the effects of the crisis. / 彼らはその危機の効果を和らげようと試みている。
-
-    - **意味2:** （刑罰などを）軽くする
-      **例文:** The judge refused to **mitigate** the sentence. / 裁判官は刑の軽減を拒否した。
+1.  **品詞:** {品詞}
+    - **意味N:** {意味}
+      **例文:** {例文（対象語句は**太字**）}
 
 ### 対象語句
 {{text}}`,
-    temperature: 0.7,
+    temperature: 0.3,
     autoInsertToNote: false,
     insertionTemplate: `> {{original}}
 > 

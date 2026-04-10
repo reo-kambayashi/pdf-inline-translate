@@ -243,6 +243,7 @@ export class GeminiHttpClient {
             generationConfig: {
                 temperature,
                 maxOutputTokens: Number(maxTokensSource) || 1024,
+                thinkingConfig: { thinkingBudget: 0 },
             },
             systemInstruction: {
                 role: 'system',
