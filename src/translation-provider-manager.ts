@@ -2,7 +2,7 @@ import { TranslationHistoryManager } from './translation-history-manager';
 import { TranslationProvider, TranslationResult } from './translation-provider';
 import { PdfInlineTranslatePluginSettings } from './types';
 import { GeminiClient } from './api/gemini-client';
-import { GEMINI_MODEL } from './constants';
+import { DEFAULT_GEMINI_MODEL } from './constants';
 import { isDictionaryCandidate } from './utils/dictionary-utils';
 
 export class TranslationProviderManager {
@@ -22,6 +22,7 @@ export class TranslationProviderManager {
 
         // Initialize Gemini provider (always available)
         const geminiClient = new GeminiClient(this.settings, this.historyManager);
+        const resolveModel = () => this.settings.model ?? DEFAULT_GEMINI_MODEL;
         this.providers.set('gemini', {
             translate: async (text, targetLang, sourceLang, context, abortSignal, onChunk) => {
                 try {
@@ -35,7 +36,7 @@ export class TranslationProviderManager {
                         text: result,
                         success: true,
                         provider: 'Gemini',
-                        model: GEMINI_MODEL,
+                        model: resolveModel(),
                     };
                 } catch (error) {
                     const message =
@@ -51,7 +52,7 @@ export class TranslationProviderManager {
             },
             isConfigured: () => !!this.settings.apiKey,
             getName: () => 'Gemini',
-            getModel: () => GEMINI_MODEL,
+            getModel: () => resolveModel(),
         });
 
         // Set the current provider
@@ -77,8 +78,6 @@ export class TranslationProviderManager {
         const provider = this.providers.get(providerName);
         if (provider) {
             this.currentProvider = provider;
-            // Update the settings to persist the change
-            this.settings.translationProvider = providerName as 'gemini';
             return true;
         }
         return false;
@@ -91,6 +90,7 @@ export class TranslationProviderManager {
         context?: any,
         abortSignal?: AbortSignal,
         onChunk?: (text: string) => void,
+        options?: { skipCache?: boolean },
     ): Promise<TranslationResult> {
         if (!this.currentProvider) {
             return {
@@ -101,7 +101,7 @@ export class TranslationProviderManager {
         }
 
         // Check for cached translation first if history manager is available
-        if (this.historyManager) {
+        if (this.historyManager && !options?.skipCache) {
             const dictionaryCandidate = isDictionaryCandidate(text);
             const cacheOptions = dictionaryCandidate ? { isDictionary: true } : { isDictionary: false };
             let cachedResult = this.historyManager.findCachedTranslation(
@@ -128,12 +128,19 @@ export class TranslationProviderManager {
             }
         }
 
-        // Perform the translation
+        // Perform the translation. Pass skipCache through context so the Gemini
+        // client's internal cache lookup (also a layer here) is bypassed too.
+        const effectiveContext =
+            options?.skipCache && context && typeof context === 'object'
+                ? { ...context, skipCache: true }
+                : options?.skipCache
+                    ? { skipCache: true }
+                    : context;
         const result = await this.currentProvider.translate(
             text,
             targetLang,
             sourceLang,
-            context,
+            effectiveContext,
             abortSignal,
             onChunk,
         );

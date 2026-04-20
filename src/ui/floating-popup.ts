@@ -1,6 +1,7 @@
 import { Notice, setIcon } from 'obsidian';
 import PdfInlineTranslatePlugin from '../main';
 import { TranslationState, TranslationContext } from '../types';
+import { getModelShortLabel } from '../constants';
 import { PopupDragHandler } from './popup-drag-handler';
 import { PopupPositioner } from './popup-positioner';
 import { PopupDomBuilder, HeaderRefs, BodyRefs } from './popup-dom-builder';
@@ -15,6 +16,7 @@ export class GeminiTranslationFloatingPopup {
     private statusEl: HTMLElement | null = null;
     private translationEl: HTMLElement | null = null;
     private copyButton: HTMLButtonElement | null = null;
+    private retryButton: HTMLButtonElement | null = null;
     private statusBadgeEl: HTMLElement | null = null;
     private collapseButton: HTMLButtonElement | null = null;
     private originalToggleButton: HTMLButtonElement | null = null;
@@ -25,6 +27,7 @@ export class GeminiTranslationFloatingPopup {
     // State
     private translationText: string = '';
     private onClose: (() => void) | null = null;
+    private onRetry: (() => void) | null = null;
     private isExpanded: boolean = false;
     private currentState: TranslationState | null = null;
     private lastContext: TranslationContext | null = null;
@@ -62,6 +65,7 @@ export class GeminiTranslationFloatingPopup {
             statusBadgeEl: this.statusBadgeEl,
             translationEl: this.translationEl,
             copyButton: this.copyButton,
+            retryButton: this.retryButton,
             originalSection: this.originalSection,
             originalToggleButton: this.originalToggleButton,
             originalEl: this.originalEl,
@@ -70,6 +74,10 @@ export class GeminiTranslationFloatingPopup {
 
     setCloseHandler(handler: () => void) {
         this.onClose = handler;
+    }
+
+    setRetryHandler(handler: (() => void) | null) {
+        this.onRetry = typeof handler === 'function' ? handler : null;
     }
 
     setExpandHandler(handler: (() => void) | null) {
@@ -181,7 +189,7 @@ export class GeminiTranslationFloatingPopup {
 
         this.applyTheme();
 
-        const modelTitle = this.plugin.providerManager.getProvider()?.getModel() ?? '翻訳';
+        const modelTitle = `Gemini ${getModelShortLabel(this.plugin.settings.model)}`;
         const headerRefs: HeaderRefs = PopupDomBuilder.buildHeader(
             () => this.renderCollapsed(this.lastContext ?? this.currentState?.context ?? {}),
             () => this.handleClose(),
@@ -192,6 +200,7 @@ export class GeminiTranslationFloatingPopup {
             this.isOriginalVisible,
             () => this.toggleOriginalVisibility(),
             () => this.handleCopy(),
+            () => this.handleRetry(),
         );
 
         // Store refs from builders
@@ -203,6 +212,7 @@ export class GeminiTranslationFloatingPopup {
         this.originalEl = bodyRefs.originalEl;
         this.translationEl = bodyRefs.translationEl;
         this.copyButton = bodyRefs.copyButton;
+        this.retryButton = bodyRefs.retryButton;
 
         // Initialize original visibility from settings
         this.isOriginalVisible = this.plugin.settings.showOriginalText;
@@ -212,6 +222,15 @@ export class GeminiTranslationFloatingPopup {
 
         this.addGlobalListener();
         this.focus();
+    }
+
+    private handleRetry() {
+        if (typeof this.onRetry !== 'function') return;
+        try {
+            this.onRetry();
+        } catch (error) {
+            console.error('PDF Inline Translate: 再翻訳ハンドラで例外が発生しました。', error);
+        }
     }
 
     private handleCopy() {
@@ -409,6 +428,7 @@ export class GeminiTranslationFloatingPopup {
         this.statusEl = null;
         this.translationEl = null;
         this.copyButton = null;
+        this.retryButton = null;
         this.statusBadgeEl = null;
         this.collapseButton = null;
         this.originalToggleButton = null;

@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { splitTextForBatch, isValidRect, createPlainRect } from './utils';
+import { splitTextForBatch, isValidRect, createPlainRect, cleanPdfText } from './utils';
+
+describe('cleanPdfText', () => {
+    it('joins hyphen-broken words at line ends', () => {
+        expect(cleanPdfText('trans-\nlation')).toBe('translation');
+    });
+
+    it('preserves paragraph breaks (double newlines)', () => {
+        expect(cleanPdfText('First para.\n\nSecond para.')).toBe(
+            'First para.\n\nSecond para.',
+        );
+    });
+
+    it('collapses single newlines to spaces', () => {
+        expect(cleanPdfText('A line\nthat wraps\nmid-sentence.')).toBe(
+            'A line that wraps mid-sentence.',
+        );
+    });
+
+    it('expands common Latin ligatures', () => {
+        expect(cleanPdfText('e\uFB03cient \uFB02ow')).toBe('efficient flow');
+    });
+
+    it('collapses runs of intra-line whitespace', () => {
+        expect(cleanPdfText('a    b\t\tc')).toBe('a b c');
+    });
+
+    it('returns empty string for non-string input', () => {
+        expect(cleanPdfText('')).toBe('');
+        expect(cleanPdfText(null as unknown as string)).toBe('');
+    });
+});
 
 describe('splitTextForBatch', () => {
     it('should split text by paragraphs', () => {

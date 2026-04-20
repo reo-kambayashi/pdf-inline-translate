@@ -8,6 +8,7 @@ export interface PopupDomRefs {
     statusBadgeEl: HTMLElement | null;
     translationEl: HTMLElement | null;
     copyButton: HTMLButtonElement | null;
+    retryButton: HTMLButtonElement | null;
     originalSection: HTMLElement | null;
     originalToggleButton: HTMLButtonElement | null;
     originalEl: HTMLElement | null;
@@ -28,6 +29,7 @@ export class PopupStateRenderer {
         if (!state) {
             if (refs.statusEl) refs.statusEl.textContent = '';
             this.toggleCopyButton(false);
+            this.toggleRetryButton(false);
             return;
         }
 
@@ -36,12 +38,14 @@ export class PopupStateRenderer {
                 this.updateStatusBadge('loading');
                 if (refs.statusEl) refs.statusEl.textContent = UI_STATUS_MESSAGES.LOADING;
                 this.toggleCopyButton(false);
+                this.toggleRetryButton(false);
                 this.renderLoadingSkeleton();
                 break;
             case 'pending':
                 this.updateStatusBadge('pending');
                 if (refs.statusEl) refs.statusEl.textContent = UI_STATUS_MESSAGES.PENDING;
                 this.toggleCopyButton(false);
+                this.toggleRetryButton(false);
                 this.clearTranslationContent('pending');
                 break;
             case 'result':
@@ -49,21 +53,25 @@ export class PopupStateRenderer {
                 await this.renderCustomMarkdown(state.translation ?? '');
                 if (refs.statusEl) refs.statusEl.textContent = '';
                 this.toggleCopyButton(Boolean(state.translation));
+                this.toggleRetryButton(true);
                 break;
             case 'cancelled':
                 this.updateStatusBadge('cancelled');
                 if (refs.statusEl) refs.statusEl.textContent = UI_STATUS_MESSAGES.CANCELLED;
                 this.toggleCopyButton(false);
+                this.toggleRetryButton(true);
                 this.clearTranslationContent('cancelled');
                 break;
             case 'error':
                 this.updateStatusBadge('error');
                 if (refs.statusEl) refs.statusEl.textContent = state.message ?? UI_STATUS_MESSAGES.ERROR_DEFAULT;
                 this.toggleCopyButton(false);
+                this.toggleRetryButton(true);
                 this.clearTranslationContent('error');
                 break;
             default:
                 this.updateStatusBadge('idle');
+                this.toggleRetryButton(false);
                 this.clearTranslationContent('idle');
                 break;
         }
@@ -110,6 +118,16 @@ export class PopupStateRenderer {
 
     toggleCopyButton(isEnabled: boolean): void {
         const btn = this.getRefs().copyButton;
+        if (!btn) return;
+        if (isEnabled) {
+            btn.removeAttribute('disabled');
+        } else {
+            btn.setAttribute('disabled', 'true');
+        }
+    }
+
+    toggleRetryButton(isEnabled: boolean): void {
+        const btn = this.getRefs().retryButton;
         if (!btn) return;
         if (isEnabled) {
             btn.removeAttribute('disabled');

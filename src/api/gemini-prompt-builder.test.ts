@@ -2,59 +2,59 @@ import { describe, it, expect } from 'vitest';
 import { buildTranslationPrompt } from './gemini-prompt-builder';
 import type { TranslationContext } from '../types';
 
-const baseSettings = {
-    translationPromptTemplate: 'Translate {{text}} to {{targetLanguage}} (page {{page}})',
-    dictionaryPromptTemplate: 'Define {{text}} in {{targetLanguage}} (page {{page}})',
-    targetLanguage: 'Japanese',
-};
-
+const baseSettings = { targetLanguage: 'Japanese' };
 const context: TranslationContext = { pageNumber: 3 };
 
 describe('buildTranslationPrompt', () => {
-    it('substitutes {{text}}, {{targetLanguage}}, {{page}} for translation mode', () => {
+    it('uses the translation template for "translation" classification', () => {
         const result = buildTranslationPrompt('hello', context, 'translation', baseSettings);
-        expect(result).toBe('Translate hello to Japanese (page 3)');
+        expect(result).toContain('hello');
+        expect(result).toContain('Japanese');
+        expect(result).toContain('ページ 3');
+        // Translation-specific markers from TRANSLATION_PROMPT_TEMPLATE.
+        expect(result).toContain('PDF抜粋');
+        expect(result).not.toContain('辞書カード');
     });
 
-    it('uses dictionaryPromptTemplate for dictionary classification', () => {
+    it('uses the dictionary template for "dictionary" classification', () => {
         const result = buildTranslationPrompt('hello', context, 'dictionary', baseSettings);
-        expect(result).toBe('Define hello in Japanese (page 3)');
+        expect(result).toContain('hello');
+        expect(result).toContain('Japanese');
+        expect(result).toContain('辞書カード');
+        expect(result).not.toContain('PDF抜粋');
     });
 
-    it('replaces {{page}} with N/A when pageNumber is undefined', () => {
+    it('substitutes {{page}} with "N/A" when pageNumber is missing', () => {
         const result = buildTranslationPrompt('hello', {} as TranslationContext, 'translation', baseSettings);
-        expect(result).toBe('Translate hello to Japanese (page N/A)');
+        expect(result).toContain('ページ N/A');
     });
 
-    it('replaces {{page}} with N/A when pageNumber is null', () => {
+    it('substitutes {{page}} with "N/A" when pageNumber is null', () => {
         const result = buildTranslationPrompt(
             'hello',
             { pageNumber: null as unknown as number },
             'translation',
             baseSettings,
         );
-        expect(result).toBe('Translate hello to Japanese (page N/A)');
+        expect(result).toContain('ページ N/A');
     });
 
-    it('replaces all occurrences of each placeholder', () => {
-        const settings = {
-            translationPromptTemplate: '{{text}} {{text}} → {{targetLanguage}} p{{page}} p{{page}}',
-            dictionaryPromptTemplate: '',
-            targetLanguage: 'EN',
-        };
-        const result = buildTranslationPrompt('word', { pageNumber: 1 }, 'translation', settings);
-        expect(result).toBe('word word → EN p1 p1');
+    it('pre-cleans PDF noise in translation mode (hyphenation, mid-line break)', () => {
+        const input = 'trans-\nlation\nof text';
+        const result = buildTranslationPrompt(input, context, 'translation', baseSettings);
+        expect(result).toContain('translation of text');
+        expect(result).not.toContain('trans-');
     });
 
-    it('handles an empty template gracefully', () => {
-        const settings = { ...baseSettings, translationPromptTemplate: '' };
-        const result = buildTranslationPrompt('hello', context, 'translation', settings);
-        expect(result).toBe('');
+    it('preserves the original form in dictionary mode (no pre-cleaning)', () => {
+        const input = 'naïve';
+        const result = buildTranslationPrompt(input, context, 'dictionary', baseSettings);
+        expect(result).toContain('naïve');
     });
 
-    it('handles template with no placeholders', () => {
-        const settings = { ...baseSettings, translationPromptTemplate: 'static text' };
-        const result = buildTranslationPrompt('hello', context, 'translation', settings);
-        expect(result).toBe('static text');
+    it('replaces every occurrence of {{targetLanguage}}', () => {
+        const result = buildTranslationPrompt('hello', context, 'dictionary', { targetLanguage: 'EN' });
+        expect(result).not.toContain('{{targetLanguage}}');
+        expect(result.split('EN').length).toBeGreaterThan(2);
     });
 });

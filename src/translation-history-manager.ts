@@ -38,7 +38,7 @@ export class TranslationHistoryManager {
             targetLanguage,
             sourceLanguage,
             timestamp: Date.now(),
-            modelUsed: modelUsed || this.plugin.settings.model,
+            modelUsed: modelUsed || this.plugin.settings.model || 'unknown',
             isDictionary,
         };
 

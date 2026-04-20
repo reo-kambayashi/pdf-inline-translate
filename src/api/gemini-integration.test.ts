@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { GeminiHttpClient } from './gemini-http-client';
-import { DEFAULT_SETTINGS, GEMINI_MODEL } from '../constants';
+import { DEFAULT_SETTINGS } from '../constants';
 
 // Mirror how the actual plugin loads the API key: Obsidian persists settings to
 // data.json in the plugin root via this.loadData() / this.saveData().
@@ -19,45 +19,18 @@ function loadApiKeyFromDataJson(): string {
 const apiKey = process.env.GEMINI_API_KEY || loadApiKeyFromDataJson();
 const runIntegration = !!apiKey;
 
-describe('Gemini API key', () => {
-    it('API key is configured (data.json or GEMINI_API_KEY env var)', () => {
-        expect(
-            apiKey,
-            'APIキーが見つかりません。Obsidianの設定でキーを入力するか、GEMINI_API_KEY 環境変数をセットしてください。',
-        ).not.toBe('');
-    });
-});
-
-describe.skipIf(!runIntegration)('Gemini API integration', () => {
-    const settings = {
-        ...DEFAULT_SETTINGS,
-        apiKey,
-        model: GEMINI_MODEL,
-    };
-    const client = new GeminiHttpClient(settings);
-    const abortSignal = new AbortController().signal;
-
-    it('returns a non-empty response for a simple prompt', async () => {
-        const response = await client.sendRequest('Say "hello" in one word.', abortSignal);
+// Single real-API smoke test. Streaming, retries, 401, abort, timeout, and
+// extractText edge cases are all covered by mocked tests in
+// gemini-http-client.test.ts — keep this suite minimal to limit cost and flakiness.
+describe.skipIf(!runIntegration)('Gemini API integration (smoke)', () => {
+    it('returns a non-empty response from the live API', async () => {
+        const client = new GeminiHttpClient({ ...DEFAULT_SETTINGS, apiKey });
+        const response = await client.sendRequest(
+            'Say "hello" in one word.',
+            new AbortController().signal,
+        );
         const text = client.extractText(response);
         expect(typeof text).toBe('string');
         expect(text.trim().length).toBeGreaterThan(0);
-    }, 30_000);
-
-    it('streams chunks and accumulates the full response', async () => {
-        const chunks: string[] = [];
-        const accumulated = await client.streamRequest(
-            'Say "hello" in one word.',
-            abortSignal,
-            (chunk) => chunks.push(chunk),
-        );
-        expect(chunks.length).toBeGreaterThan(0);
-        expect(accumulated).toBe(chunks.join(''));
-        expect(accumulated.trim().length).toBeGreaterThan(0);
-    }, 30_000);
-
-    it('throws on invalid API key', async () => {
-        const badClient = new GeminiHttpClient({ ...settings, apiKey: 'invalid-key' });
-        await expect(badClient.sendRequest('hello', abortSignal)).rejects.toThrow(/API key|check your API key/i);
     }, 30_000);
 });

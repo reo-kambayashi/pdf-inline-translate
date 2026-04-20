@@ -112,6 +112,20 @@ export default class PdfInlineTranslatePlugin extends Plugin {
         const loadedData = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 
+        // Prompts moved into source code; strip any legacy values from prior
+        // versions so they don't get re-saved to data.json.
+        const legacyPromptKeys = [
+            'systemInstruction',
+            'translationPromptTemplate',
+            'dictionaryPromptTemplate',
+        ] as const;
+        const settingsBag = this.settings as unknown as Record<string, unknown>;
+        for (const key of legacyPromptKeys) {
+            if (key in settingsBag) {
+                delete settingsBag[key];
+            }
+        }
+
         // Initialize or load translation history
         const historyData = loadedData?.translationHistory;
         this.translationHistory = {

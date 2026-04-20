@@ -206,7 +206,7 @@ export class LanguageDetector {
                 'es',
                 'ein',
                 'eine',
-                'f체r',
+                'für',
                 'auch',
                 'sich',
                 'auf',

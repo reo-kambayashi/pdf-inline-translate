@@ -121,6 +121,13 @@ export class UIManager {
             void this.executeTranslationRequest(popup, validatedText, safeContext);
         });
 
+        // Set up the retry handler — bypasses cache to force a fresh request.
+        popup.setRetryHandler(() => {
+            void this.executeTranslationRequest(popup, validatedText, safeContext, {
+                skipCache: true,
+            });
+        });
+
         // Prepare the collapsed state with the new text
         popup.prepareCollapsedState(validatedText, safeContext);
 
@@ -245,6 +252,7 @@ export class UIManager {
         popup: GeminiTranslationFloatingPopup,
         selectionText: string,
         context: TranslationContext,
+        options?: { skipCache?: boolean },
     ) {
         const result = await this.prepareTranslationRequest(popup, selectionText, context);
         if (!result || typeof result === 'boolean') return;
@@ -271,6 +279,7 @@ export class UIManager {
                 safeContext,
                 abortController.signal,
                 onChunk,
+                options,
             );
 
             // Check if the request was aborted after the API call completed

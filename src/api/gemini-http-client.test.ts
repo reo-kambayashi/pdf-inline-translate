@@ -268,7 +268,7 @@ describe('GeminiHttpClient.streamRequest', () => {
         );
 
         expect(chunks).toEqual(parts);
-        expect(result).toBe(parts.join(''));
+        expect(result.text).toBe(parts.join(''));
     });
 
     it('skips malformed SSE lines and continues', async () => {
@@ -297,7 +297,7 @@ describe('GeminiHttpClient.streamRequest', () => {
         );
 
         expect(chunks).toEqual(['ok']);
-        expect(result).toBe('ok');
+        expect(result.text).toBe('ok');
     });
 
     it('throws when response body is null', async () => {

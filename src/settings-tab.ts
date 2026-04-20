@@ -1,12 +1,12 @@
-import { App, PluginSettingTab } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import PdfInlineTranslatePlugin from './main';
-import { DEFAULT_SETTINGS } from './constants';
+import { DEFAULT_GEMINI_MODEL, DEFAULT_SETTINGS, GEMINI_MODELS } from './constants';
+import { GeminiModelId } from './types';
 import {
     addToggleSetting,
     addTextSetting,
     addDropdownSetting,
     addSliderSetting,
-    addTextAreaSetting,
 } from './settings-helpers';
 
 export class PdfInlineTranslateSettingTab extends PluginSettingTab {
@@ -60,19 +60,42 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
         // ── Gemini API ────────────────────────────────────────
         containerEl.createEl('h3', { text: 'Gemini API' });
 
-        addTextSetting(
+        // API key — rendered as a password input so it isn't shoulder-surfed.
+        new Setting(containerEl)
+            .setName('Gemini APIキー')
+            .setDesc('https://aistudio.google.com/ で発行したAPIキーを入力してください。')
+            .addText((text) => {
+                text.inputEl.type = 'password';
+                text.inputEl.autocomplete = 'off';
+                text.inputEl.spellcheck = false;
+                text.setPlaceholder('AIza...')
+                    .setValue(this.plugin.settings.apiKey)
+                    .onChange(async (value) => {
+                        const trimmedValue = value.trim();
+                        if (trimmedValue && !trimmedValue.startsWith('AIza')) {
+                            console.warn('APIキーの形式が正しくない可能性があります。');
+                        }
+                        this.plugin.settings.apiKey = trimmedValue;
+                        await this.saveProviderSettings();
+                    });
+            });
+
+        const modelOptions = Object.fromEntries(
+            Object.values(GEMINI_MODELS).map((info) => [info.id, info.label]),
+        );
+        const currentModelId = this.plugin.settings.model ?? DEFAULT_GEMINI_MODEL;
+        const currentModelInfo = GEMINI_MODELS[currentModelId] ?? GEMINI_MODELS[DEFAULT_GEMINI_MODEL];
+        addDropdownSetting(
             containerEl,
-            'Gemini APIキー',
-            'https://aistudio.google.com/ で発行したAPIキーを入力してください。',
-            'AIza...',
-            () => this.plugin.settings.apiKey,
+            'モデル',
+            `現在: ${currentModelInfo.description} ` +
+                `(入力 $${currentModelInfo.inputPricePerMTokenUsd}/M / 出力 $${currentModelInfo.outputPricePerMTokenUsd}/M)`,
+            modelOptions,
+            () => currentModelId,
             async (value) => {
-                const trimmedValue = value.trim();
-                if (trimmedValue && !trimmedValue.startsWith('AIza')) {
-                    console.warn('APIキーの形式が正しくない可能性があります。');
-                }
-                this.plugin.settings.apiKey = trimmedValue;
+                this.plugin.settings.model = value as GeminiModelId;
                 await this.saveProviderSettings();
+                this.display();
             },
         );
 
@@ -144,7 +167,7 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             '温度',
             'モデル出力のランダム性を制御する値（0.0〜2.0）。低い値ほど決定的になります。',
             0, 2, 0.05,
-            () => this.plugin.settings.temperature ?? 0.7,
+            () => this.plugin.settings.temperature ?? DEFAULT_SETTINGS.temperature ?? 0.2,
             async (value) => {
                 if (value < 0 || value > 2) { console.warn('温度は0から2の間である必要があります。'); return; }
                 this.plugin.settings.temperature = value;
@@ -180,32 +203,9 @@ export class PdfInlineTranslateSettingTab extends PluginSettingTab {
             },
         );
 
-        addTextAreaSetting(
-            containerEl,
-            'システム指示',
-            'モデルに与える前提指示や翻訳スタイルを記述します。',
-            6, 50,
-            () => this.plugin.settings.systemInstruction ?? DEFAULT_SETTINGS.systemInstruction,
-            async (value) => { this.plugin.settings.systemInstruction = value; await this.plugin.saveSettings(); },
-        );
-
-        addTextAreaSetting(
-            containerEl,
-            '翻訳プロンプトテンプレート',
-            '翻訳に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
-            8, 50,
-            () => this.plugin.settings.translationPromptTemplate ?? DEFAULT_SETTINGS.translationPromptTemplate,
-            async (value) => { this.plugin.settings.translationPromptTemplate = value; await this.plugin.saveSettings(); },
-        );
-
-        addTextAreaSetting(
-            containerEl,
-            '辞書プロンプトテンプレート',
-            '辞書検索に使用するプロンプトテンプレート。{{text}}, {{targetLanguage}}, {{page}} を使用できます。',
-            8, 50,
-            () => this.plugin.settings.dictionaryPromptTemplate ?? DEFAULT_SETTINGS.dictionaryPromptTemplate,
-            async (value) => { this.plugin.settings.dictionaryPromptTemplate = value; await this.plugin.saveSettings(); },
-        );
+        // Prompts (system instruction / translation / dictionary) are now
+        // maintained in code (src/constants.ts) and intentionally omitted
+        // from the settings UI so that improvements ship with the plugin.
 
         // ── 翻訳履歴 ───────────────────────────────────────────────
         containerEl.createEl('h3', { text: '翻訳履歴' });

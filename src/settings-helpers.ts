@@ -72,13 +72,25 @@ export function addTextAreaSetting(
     cols: number,
     getValue: () => string,
     onChange: (value: string) => Promise<void>,
+    resetToDefault?: () => Promise<string>,
 ): void {
-    new Setting(containerEl)
-        .setName(name)
-        .setDesc(desc)
-        .addTextArea((textArea) => {
-            textArea.setValue(getValue()).onChange(onChange);
-            textArea.inputEl.rows = rows;
-            textArea.inputEl.cols = cols;
-        });
+    const setting = new Setting(containerEl).setName(name).setDesc(desc);
+    let textAreaRef: { setValue: (v: string) => void } | null = null;
+    setting.addTextArea((textArea) => {
+        textArea.setValue(getValue()).onChange(onChange);
+        textArea.inputEl.rows = rows;
+        textArea.inputEl.cols = cols;
+        textAreaRef = textArea;
+    });
+    if (resetToDefault) {
+        setting.addExtraButton((btn) =>
+            btn
+                .setIcon('reset')
+                .setTooltip('デフォルトに戻す')
+                .onClick(async () => {
+                    const next = await resetToDefault();
+                    textAreaRef?.setValue(next);
+                }),
+        );
+    }
 }

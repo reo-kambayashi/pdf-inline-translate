@@ -206,6 +206,56 @@ export function validateAndTrim(value: any, fallbackValue: string = ''): string 
     return fallbackValue;
 }
 
+// Common Latin ligatures that PDF extractors leave intact. Module-level to
+// avoid recreating the object on every cleanPdfText() call.
+const PDF_LIGATURES: Record<string, string> = {
+    '\uFB00': 'ff',
+    '\uFB01': 'fi',
+    '\uFB02': 'fl',
+    '\uFB03': 'ffi',
+    '\uFB04': 'ffl',
+    '\uFB05': 'ft',
+    '\uFB06': 'st',
+};
+
+/**
+ * Cleans up text copied from a PDF before sending it to the model. PDF
+ * extraction commonly produces ligatures, soft-hyphenated line breaks, and
+ * mid-sentence newlines from column wrapping — passing these to the LLM both
+ * wastes tokens and degrades translation fidelity.
+ *
+ * Conservative rules (preserves intentional structure):
+ * - Normalize CRLF/CR to LF
+ * - Replace common ligatures (ﬁ ﬂ ﬀ ﬃ ﬄ) with their decomposed letters
+ * - Join hyphen-broken words at line ends ("trans-\nlation" → "translation")
+ * - Collapse single newlines inside a paragraph to a space, but preserve
+ *   2+ consecutive newlines as paragraph breaks
+ * - Collapse runs of intra-paragraph spaces/tabs to a single space
+ */
+export function cleanPdfText(text: string): string {
+    if (!text || typeof text !== 'string') return '';
+
+    let cleaned = text.replace(/\r\n?/g, '\n');
+
+    cleaned = cleaned.replace(/[\uFB00-\uFB06]/g, (ch) => PDF_LIGATURES[ch] ?? ch);
+
+    // Soft-hyphen + newline → join. ASCII hyphen + newline between letters → join.
+    cleaned = cleaned.replace(/\u00AD\n/g, '');
+    cleaned = cleaned.replace(/(\p{L})-\n(\p{L})/gu, '$1$2');
+
+    // Preserve paragraph breaks (2+ newlines) by stashing them, then collapse
+    // remaining single newlines to spaces, then restore.
+    cleaned = cleaned
+        .replace(/\n{2,}/g, '\u0000')
+        .replace(/\n+/g, ' ')
+        .replace(/\u0000/g, '\n\n');
+
+    // Collapse intra-line whitespace runs.
+    cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+
+    return cleaned.trim();
+}
+
 export function splitTextForBatch(text: string): string[] {
     // Split text by paragraphs or sentences, but preserve sentence structure
     // Limit each segment to avoid API limits

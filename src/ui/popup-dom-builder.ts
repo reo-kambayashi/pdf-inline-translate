@@ -15,6 +15,7 @@ export interface BodyRefs {
     originalEl: HTMLPreElement;
     translationEl: HTMLDivElement;
     copyButton: HTMLButtonElement;
+    retryButton: HTMLButtonElement;
 }
 
 export class PopupDomBuilder {
@@ -75,6 +76,7 @@ export class PopupDomBuilder {
         isOriginalVisible: boolean,
         onToggleOriginal: () => void,
         onCopy: () => void,
+        onRetry: () => void,
     ): BodyRefs {
         const body = document.createElement('div');
         body.className = 'pdf-inline-translate__popup-body';
@@ -108,6 +110,15 @@ export class PopupDomBuilder {
 
         const buttonRow = document.createElement('div');
         buttonRow.className = 'pdf-inline-translate__buttons';
+
+        const retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.className = 'pdf-inline-translate__retry';
+        retryButton.textContent = '再翻訳';
+        retryButton.title = 'キャッシュを無視して翻訳し直す';
+        retryButton.addEventListener('click', onRetry);
+        buttonRow.appendChild(retryButton);
+
         const copyButton = document.createElement('button');
         copyButton.type = 'button';
         copyButton.className = 'mod-cta';
@@ -117,6 +128,6 @@ export class PopupDomBuilder {
         buttonRow.appendChild(copyButton);
         body.appendChild(buttonRow);
 
-        return { element: body, statusEl, originalSection, originalToggleButton, originalEl, translationEl, copyButton };
+        return { element: body, statusEl, originalSection, originalToggleButton, originalEl, translationEl, copyButton, retryButton };
     }
 }

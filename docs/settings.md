@@ -9,7 +9,8 @@ Defaults are in `DEFAULT_SETTINGS` ([src/constants.ts](../src/constants.ts)).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `apiKey` | `string` | `""` | Gemini API key. Must start with `AIza`. Get from https://aistudio.google.com/ |
+| `apiKey` | `string` | `""` | Gemini API key (rendered as a password input). Must start with `AIza`. Get from https://aistudio.google.com/ |
+| `model` | `'gemini-2.5-flash-lite' \| 'gemini-2.5-flash' \| 'gemini-2.5-pro'` | `'gemini-2.5-flash-lite'` | Gemini model. Flash-Lite is the cheapest (~$0.10/M in, $0.40/M out) and fits short selections; Flash balances cost and accuracy; Pro enables dynamic thinking for hard passages. |
 
 ---
 
@@ -55,8 +56,8 @@ Defaults are in `DEFAULT_SETTINGS` ([src/constants.ts](../src/constants.ts)).
 | `systemInstruction` | `string?` | (academic translator prompt) | System prompt sent to Gemini |
 | `translationPromptTemplate` | `string?` | (see constants.ts) | Prompt for multi-word / sentence translation. Supports `{{text}}`, `{{targetLanguage}}`, `{{page}}` |
 | `dictionaryPromptTemplate` | `string?` | (see constants.ts) | Prompt for single English word dictionary lookup. Same placeholders |
-| `temperature` | `number?` | `0.7` | Gemini sampling temperature (0–1) |
-| `maxOutputTokens` | `number` | `1024` | Max tokens in Gemini response |
+| `temperature` | `number?` | `0.2` | Gemini sampling temperature (0–2). Low value keeps translations deterministic. |
+| `maxOutputTokens` | `number` | `2048` | Max tokens in Gemini response. Translations longer than this are surfaced as a `MAX_TOKENS` truncation warning. Dictionary lookups are auto-capped at 768. |
 | `timeoutMs` | `number?` | `30000` | Request timeout in milliseconds |
 
 ---

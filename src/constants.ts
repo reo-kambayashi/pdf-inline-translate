@@ -1,56 +1,135 @@
-import { PdfInlineTranslatePluginSettings } from './types';
+import { GeminiModelId, PdfInlineTranslatePluginSettings } from './types';
 
-export const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
+// Default model. Flash-Lite is the cheapest production-grade Gemini 2.5 model
+// (~6x cheaper output than Flash) and is sufficient for short selections /
+// dictionary lookups. Users can switch to Flash or Pro from settings.
+export const DEFAULT_GEMINI_MODEL: GeminiModelId = 'gemini-2.5-flash-lite';
+
+export interface GeminiModelInfo {
+    id: GeminiModelId;
+    label: string;
+    /** Compact label for popup header / status displays. */
+    shortLabel: string;
+    /** Per-1M-token pricing (USD). Source: https://ai.google.dev/gemini-api/docs/pricing (2026-04). */
+    inputPricePerMTokenUsd: number;
+    outputPricePerMTokenUsd: number;
+    /** Whether the model supports `thinkingConfig.thinkingBudget`. */
+    supportsThinking: boolean;
+    description: string;
+}
+
+export const GEMINI_MODELS: Record<GeminiModelId, GeminiModelInfo> = {
+    'gemini-2.5-flash-lite': {
+        id: 'gemini-2.5-flash-lite',
+        label: 'Gemini 2.5 Flash-Lite (高速・最安)',
+        shortLabel: 'Flash-Lite',
+        inputPricePerMTokenUsd: 0.1,
+        outputPricePerMTokenUsd: 0.4,
+        supportsThinking: false,
+        description: '短文・辞書引きに最適。Flashの約6倍安い。',
+    },
+    'gemini-2.5-flash': {
+        id: 'gemini-2.5-flash',
+        label: 'Gemini 2.5 Flash (バランス)',
+        shortLabel: 'Flash',
+        inputPricePerMTokenUsd: 0.3,
+        outputPricePerMTokenUsd: 2.5,
+        supportsThinking: true,
+        description: '長文・専門用語の精度が必要なときに。',
+    },
+    'gemini-2.5-pro': {
+        id: 'gemini-2.5-pro',
+        label: 'Gemini 2.5 Pro (最高精度)',
+        shortLabel: 'Pro',
+        inputPricePerMTokenUsd: 1.25,
+        outputPricePerMTokenUsd: 10,
+        supportsThinking: true,
+        description: '高度な意味解釈が必要な学術翻訳向け。動的thinking有効。',
+    },
+};
+
+export function getModelShortLabel(model: GeminiModelId | undefined): string {
+    const info = GEMINI_MODELS[model ?? DEFAULT_GEMINI_MODEL];
+    return info?.shortLabel ?? 'Gemini';
+}
+
+// Prompts are intentionally kept in code (not in data.json) so that template
+// improvements ship with the plugin without users having to manually reset
+// their settings. To customize, edit these constants directly.
+export const SYSTEM_INSTRUCTION = `学術翻訳・専門用語監修のプロ。原則:
+1. 論理展開・専門用語・トーンを忠実に保持。直訳が誤解を招くときのみ最小限の意訳。
+2. 太字・斜体・数式・引用番号・URL・コード片は原文どおり維持。
+3. 前置き・免責・脚注・推測・自己言及を付与しない。出力は翻訳本文のみ。
+4. 文体は原文準拠（論文・技術文書はだ・である調、解説・口語ではその語調）。
+5. 不明箇所を勝手に補完せず、原文に書かれた範囲だけを翻訳する。`;
+
+export const TRANSLATION_PROMPT_TEMPLATE = `次のPDF抜粋（ページ {{page}}）を{{targetLanguage}}に翻訳せよ。
+
+出力規則（厳守）:
+- 翻訳本文のみを返す。前置き・後書き・「翻訳：」等のラベル・コードフェンス・引用符での囲い込みは禁止。
+- 段落数・箇条書き数・見出し数・改行構造を原文どおり保つ（統合・分割・追加禁止）。
+- 数式（$…$, $$…$$, \\(…\\), \\[…\\]）・変数名・単位・引用番号 [12] や (Smith, 2020)・脚注記号・URLは一切改変しない。
+- 専門用語・固有名詞は標準訳がある場合は標準訳を、無い・不確実な場合は初出時のみ括弧で原語併記（例: トランスフォーマー(Transformer)）。
+- OCR由来の不要スペース・改行で分断された語/数式は意味を保ったまま整形可。
+- 段落間の空行は最大1行。
+
+原文:
+{{text}}`;
+
+export const DICTIONARY_PROMPT_TEMPLATE = `{{targetLanguage}}辞書カードをMarkdownで出力。前置き・コードフェンス禁止。出力は辞書本体のみ。
+
+──── 形式A：単一品詞 ────
+## {語句}
+*{品詞}* ・ /{IPA}/
+
+**1.** {意味}
+> {例文（対象語を**太字**）}
+>
+> {{{targetLanguage}}訳文（対応訳語を**太字**）}
+
+──── 形式B：複数品詞 ────
+## {語句}
+/{IPA}/
+
+### *{品詞1}*
+
+**1.** {意味}
+> {例文}
+>
+> {訳文}
+
+### *{品詞2}*
+
+**1.** {意味}
+> {例文}
+>
+> {訳文}
+
+絶対規則:
+- 形式Bでは ### 行の直後に「{品詞} ・ /{IPA}/」のような行を絶対に書かない。品詞名は ### 行に1回のみ。
+- 形式Bで品詞ごとに発音が明確に異なる場合のみ \`### *{品詞}* ・ /{IPA}/\` の形で1行に統合する（独立行にしない）。
+- 意味・品詞名は{{targetLanguage}}で記述。原語（noun, verb, adj 等）禁止。日本語の品詞名は 名詞/動詞/形容詞/副詞/前置詞/接続詞/代名詞/助動詞/間投詞 等。
+- 意味は頻度順に列挙する（件数の上限は設けない）。番号は品詞ごとに 1. から振り直す。
+- IPA は \`/.../\` で囲む（例: /həˈloʊ/）。不明なら IPA 要素ごと省略。
+- 例文は対象語を含む一般用例を1つだけ生成可（事実・固有名詞の創作禁止）。作れなければ blockquote ごと省略。
+- 例文は「原言語 → {{targetLanguage}}訳」の順。
+
+対象: {{text}}`;
 
 export const DEFAULT_SETTINGS: PdfInlineTranslatePluginSettings = {
     apiKey: '',
+    model: DEFAULT_GEMINI_MODEL,
     targetLanguage: '日本語',
-    maxOutputTokens: 512,
+    // 2048 covers most paragraph translations without truncation; user can
+    // tune. Output cost on Flash-Lite is $0.40/M, so worst-case 2048 tokens
+    // ≈ $0.0008 per call.
+    maxOutputTokens: 2048,
     popupBackgroundColorAlpha: 0.9,
     enableAutoTranslate: true,
-    systemInstruction: `あなたは学術翻訳および専門用語の監修を担うプロフェッショナルです。次の原則を厳守してください。
-1. 原文の論理展開・専門用語・トーンを忠実に保持し、誤訳や意訳を避ける。
-2. 太字・斜体・数式・引用番号などの書式は可能な限り維持する。
-3. 不要な前置き、免責、脚注、推測は一切付与しない。
-4. 文体は学術誌の本文と同等の格調高いだ・である調で統一する。`,
-    translationPromptTemplate: `## タスク
-PDF原稿の{{page}}ページから抽出した内容を、{{targetLanguage}}で学術論文向けに翻訳してください。
-
-## 守るべき要件
-- 原文の段落・箇条書き・見出し・記号類をそのままの順序で保持する。
-- 専門用語や固有名詞に確信が持てない場合は原文の表記を括弧内に併記する。
-- 数式・変数・単位・引用番号・脚注記号は改変しない。
-- 翻訳結果のみを出力し、追加の説明やサマリーを入れない。
-- 数式の形が崩れていそうな場合は、整形して出力する。
-
-## 対象の原文
-{{text}}
-
-## 出力形式
-翻訳文のみを段落ごとに出力し、段落間の空行は1行以内とする。`,
-    dictionaryPromptTemplate: `以下の単語または熟語について、学術辞典スタイルのマークダウン解説カードを作成してください。
-
-### 制約事項
-- 対象言語: {{targetLanguage}}
-- 出力は指定の項目のみ。余計な前置きや末尾コメントは禁止。
-- 複数の品詞を持つ場合は、それぞれ番号付きリストで列挙すること。
-- 同じ品詞内で複数の意味を持つ場合は、サブリスト（-）を用いて列挙すること。
-- 意味は使用される頻度の高い順に並べること。
-- 例文に登場する対象語句は、**太字**で強調すること。
-
-### 出力形式
-**{語句}** /{発音記号}/
-
-1.  **品詞:** {品詞}
-    - **意味N:** {意味}
-      **例文:** {例文（対象語句は**太字**）}
-
-### 対象語句
-{{text}}`,
-    temperature: 0.3,
+    temperature: 0.2,
     autoInsertToNote: false,
     insertionTemplate: `> {{original}}
-> 
+>
 > {{translation}}
 `,
     timeoutMs: 30000, // 30 seconds
@@ -101,6 +180,7 @@ export const ERROR_MESSAGES = {
     API_RATE_LIMITED: 'APIのレート制限に達しました。しばらく時間を置いてから再度お試しください。',
     API_AUTH_ERROR: 'API認証エラー。APIキーが無効または期限切れです。',
     CONTENT_BLOCKED: 'Geminiが安全上またはコンテンツポリシーの理由で出力をブロックしました。',
+    OUTPUT_TRUNCATED: '出力が最大トークン数に達して途中で打ち切られました。設定で「最大出力トークン」を増やすか、選択範囲を短くしてください。',
 };
 
 // UI status message constants

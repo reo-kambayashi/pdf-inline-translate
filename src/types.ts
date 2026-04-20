@@ -1,13 +1,16 @@
+export type GeminiModelId =
+    | 'gemini-2.5-flash-lite'
+    | 'gemini-2.5-flash'
+    | 'gemini-2.5-pro';
+
 export interface PdfInlineTranslatePluginSettings {
     apiKey: string;
+    model: GeminiModelId;
     targetLanguage: string;
     maxOutputTokens: number;
     popupBackgroundColorAlpha: number;
     // Add more configuration options
     enableAutoTranslate: boolean;
-    systemInstruction?: string;
-    translationPromptTemplate?: string;
-    dictionaryPromptTemplate?: string;
     temperature?: number;
     autoInsertToNote?: boolean;
     insertionTemplate?: string;
@@ -66,23 +69,30 @@ export interface GeminiTranslationResult {
 // New types for better API response handling
 export interface GeminiApiResponse {
     candidates?: Array<{
-        content: {
-            parts: Array<{ text: string }>;
-            role: string;
+        content?: {
+            parts?: Array<{ text?: string }>;
+            role?: string;
         };
-        finishReason: string;
-        index: number;
+        finishReason?: string;
+        index?: number;
         safetyRatings?: Array<{
             category: string;
             probability: string;
         }>;
     }>;
     promptFeedback?: {
-        blockReason: string;
+        blockReason?: string;
+        blockReasonMessage?: string;
         safetyRatings?: Array<{
             category: string;
             probability: string;
         }>;
+    };
+    usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        totalTokenCount?: number;
+        thoughtsTokenCount?: number;
     };
 }
 

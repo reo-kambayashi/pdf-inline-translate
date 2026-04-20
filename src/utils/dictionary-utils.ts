@@ -1,8 +1,17 @@
 const MAX_DICTIONARY_TERM_LENGTH = 50;
-const DICTIONARY_CANDIDATE_REGEX = /^[A-Za-z][A-Za-z'’\-]*$/;
+
+// A dictionary candidate is a single word made of letters from any script,
+// optionally with internal hyphens or apostrophes. This catches:
+//   - English: "translation", "well-known", "don't"
+//   - Latin-script: "café", "naïve", "Müller"
+//   - Cyrillic: "книга"
+//   - CJK / Devanagari: short single tokens
+// Phrases (containing whitespace) are excluded, as are inputs starting with
+// non-letters (numbers, punctuation).
+const DICTIONARY_CANDIDATE_REGEX = /^\p{L}[\p{L}\p{M}'’\-]*$/u;
 
 /**
- * 入力文字列が辞書検索に適した英語語句かどうかを判定し、
+ * 入力文字列が辞書検索に適した語句かどうかを判定し、
  * キャッシュキーとして利用できる正規化済み文字列を返します。
  * 条件を満たさない場合は null を返します。
  */
@@ -15,7 +24,7 @@ export function normalizeDictionaryTerm(text: string): string | null {
     if (
         trimmed.length === 0 ||
         trimmed.length > MAX_DICTIONARY_TERM_LENGTH ||
-        trimmed.includes(' ')
+        /\s/.test(trimmed)
     ) {
         return null;
     }
@@ -24,7 +33,9 @@ export function normalizeDictionaryTerm(text: string): string | null {
         return null;
     }
 
-    return trimmed.toLowerCase();
+    // toLocaleLowerCase handles Turkish I, German ß edge cases more correctly
+    // than toLowerCase. CJK/Hangul are unaffected (no case).
+    return trimmed.toLocaleLowerCase();
 }
 
 /**

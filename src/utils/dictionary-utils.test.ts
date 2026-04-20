@@ -37,9 +37,16 @@ describe('normalizeDictionaryTerm', () => {
         expect(normalizeDictionaryTerm('don\u2019t')).toBe('don\u2019t');
     });
 
-    it('returns null for non-English characters', () => {
-        expect(normalizeDictionaryTerm('café')).toBeNull();
-        expect(normalizeDictionaryTerm('日本語')).toBeNull();
+    it('accepts non-ASCII letters from Latin scripts (case-folded)', () => {
+        // Single-word foreign vocabulary is a valid dictionary lookup target —
+        // 'café', 'naïve', 'Müller' should all be recognized.
+        expect(normalizeDictionaryTerm('café')).toBe('café');
+        expect(normalizeDictionaryTerm('Müller')).toBe('müller');
+    });
+
+    it('accepts CJK single-token words', () => {
+        // 漢字一語/和語一語も辞書引きの対象。
+        expect(normalizeDictionaryTerm('日本語')).toBe('日本語');
     });
 
     it('returns null for a word starting with a non-letter (e.g. digit)', () => {
@@ -65,7 +72,12 @@ describe('isDictionaryCandidate', () => {
         expect(isDictionaryCandidate('')).toBe(false);
     });
 
-    it('returns false for a word with non-English characters', () => {
-        expect(isDictionaryCandidate('naïve')).toBe(false);
+    it('accepts a word with diacritics (Latin script)', () => {
+        expect(isDictionaryCandidate('naïve')).toBe(true);
+    });
+
+    it('returns false for digits or punctuation-only input', () => {
+        expect(isDictionaryCandidate('1234')).toBe(false);
+        expect(isDictionaryCandidate('---')).toBe(false);
     });
 });

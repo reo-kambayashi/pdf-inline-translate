@@ -18,11 +18,33 @@
 .pdf-inline-translate__buttons {
     display: flex;
     justify-content: flex-end;
+    gap: 0.5rem;
     margin-top: 0.25rem;
 }
 
 .pdf-inline-translate__buttons .mod-cta {
     min-width: 5rem;
+}
+
+.pdf-inline-translate__retry {
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.15s, color 0.15s;
+}
+
+.pdf-inline-translate__retry:hover:not([disabled]) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.pdf-inline-translate__retry[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .pdf-inline-translate__panel-view {
@@ -334,7 +356,92 @@
 .pdf-inline-translate__translation.pdf-inline-translate__translation--custom {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.15rem;
+}
+
+/* Tight-margin overrides scoped to the translation container.
+   Obsidian's default typography (fonts, colors, blockquote accent) is preserved;
+   only the vertical rhythm is compressed to fit the floating popup. */
+.pdf-inline-translate__translation--custom > :first-child {
+    margin-top: 0;
+}
+
+.pdf-inline-translate__translation--custom > :last-child {
+    margin-bottom: 0;
+}
+
+.pdf-inline-translate__translation--custom h1,
+.pdf-inline-translate__translation--custom h2,
+.pdf-inline-translate__translation--custom h3,
+.pdf-inline-translate__translation--custom h4,
+.pdf-inline-translate__translation--custom h5,
+.pdf-inline-translate__translation--custom h6 {
+    margin: 0.1rem 0 0.2rem;
+    padding: 0;
+    line-height: 1.2;
+}
+
+.pdf-inline-translate__translation--custom h2 {
+    font-size: 1.4em;
+    font-weight: 700;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Part-of-speech section heading (multi-POS entries).
+   Visually subdued; acts as a category label, not a section headline. */
+.pdf-inline-translate__translation--custom h3 {
+    margin-top: 0.3rem;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.pdf-inline-translate__translation--custom p {
+    margin: 0.15rem 0;
+    line-height: 1.5;
+}
+
+.pdf-inline-translate__translation--custom blockquote {
+    margin: 0.1rem 0 0.3rem;
+    padding: 0.05rem 0 0.05rem 0.65rem;
+}
+
+.pdf-inline-translate__translation--custom blockquote p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+/* First paragraph = source-language example (italic, Web-dictionary convention).
+   Subsequent paragraph(s) = target-language translation (upright, slightly spaced). */
+.pdf-inline-translate__translation--custom blockquote p:first-child {
+    font-style: italic;
+}
+
+.pdf-inline-translate__translation--custom blockquote p + p {
+    margin-top: 0.2rem;
+    font-style: normal;
+}
+
+/* Target word highlight inside the example and translation (bolded by the prompt). */
+.pdf-inline-translate__translation--custom blockquote strong {
+    color: var(--text-accent);
+    font-weight: 700;
+}
+
+.pdf-inline-translate__translation--custom ol,
+.pdf-inline-translate__translation--custom ul {
+    margin: 0.1rem 0 0.25rem;
+    padding-left: 1.3rem;
+}
+
+.pdf-inline-translate__translation--custom li {
+    margin: 0.1rem 0;
+    line-height: 1.5;
+}
+
+.pdf-inline-translate__translation--custom li > p {
+    margin: 0;
 }
 
 /* ==========================================================================
